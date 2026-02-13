@@ -1,0 +1,11 @@
+# Files to ignore in Zeabur deployment
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+*.zip
+cc-switch.exe
+portable.ini
+nul
+D:memoappcore/
+D:memoappservices/

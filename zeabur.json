@@ -1,0 +1,43 @@
+{
+  "name": "memos",
+  "services": [
+    {
+      "name": "extractor",
+      "type": "cronjob",
+      "command": "python batch_extractor.py --once",
+      "schedule": "*/10 * * * *",
+      "env": {
+        "SYSTEM_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "SYSTEM_API_KEY": "${SYSTEM_API_KEY}",
+        "SYSTEM_MODEL": "gemini-2.5-flash",
+        "SYSTEM_TEMPERATURE": "0.3",
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    },
+    {
+      "name": "compiler",
+      "type": "cronjob",
+      "command": "python compiler.py --once",
+      "schedule": "*/30 * * * *",
+      "env": {
+        "SYSTEM_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "SYSTEM_API_KEY": "${SYSTEM_API_KEY}",
+        "SYSTEM_MODEL": "gemini-2.5-flash",
+        "SYSTEM_TEMPERATURE": "0.3",
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    },
+    {
+      "name": "lifecycle",
+      "type": "cronjob",
+      "command": "python lifecycle_manager.py",
+      "schedule": "0 2 * * *",
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    }
+  ]
+}
