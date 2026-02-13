@@ -7,6 +7,10 @@ openai>=1.0.0
 # Database
 supabase>=2.0.0
 
+# Web Framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
 # Utils
 python-dotenv>=1.0.0
 requests>=2.31.0
