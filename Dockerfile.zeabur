@@ -12,8 +12,9 @@ RUN pip install --no-cache-dir \
     python-dotenv>=1.0.0 \
     requests>=2.31.0
 
-# 复制应用代码
+# 复制应用代码（不包括 .env）
 COPY *.py .
 
+# 注意：.env 文件不复制，通过 Zeabur 环境变量配置
 # 容器启动时运行内置调度器
 CMD ["python", "zeabur-scheduler.py"]
