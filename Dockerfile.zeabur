@@ -14,10 +14,6 @@ RUN pip install --no-cache-dir \
 
 # 复制应用代码
 COPY *.py .
-COPY zeabur-entrypoint.sh .
 
-# 设置权限
-RUN chmod +x zeabur-entrypoint.sh
-
-# 容器启动时运行调度器
-CMD ["./zeabur-entrypoint.sh"]
+# 容器启动时运行内置调度器
+CMD ["python", "zeabur-scheduler.py"]
