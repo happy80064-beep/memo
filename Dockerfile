@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir \
 
 # 复制应用代码
 COPY *.py .
-COPY .env .
+# 注意：.env 不复制，环境变量从 Zeabur 平台读取
 
 # 默认命令 (可被覆盖)
-CMD ["python", "batch_extractor.py"]
+CMD ["python", "zeabur-scheduler.py"]
