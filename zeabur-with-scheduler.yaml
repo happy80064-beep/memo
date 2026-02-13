@@ -1,0 +1,75 @@
+# Zeabur 完整部署配置（含定时任务）
+# 包含: Graph API + 批处理提取器 + 编译器 + 生命周期管理
+
+version: "1.0"
+
+services:
+  # 主应用 - Graph API
+  memos-api:
+    type: "dockerfile"
+    dockerfile: "Dockerfile.zeabur"
+    env:
+      - key: "SYSTEM_BASE_URL"
+        value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+      - key: "SYSTEM_MODEL"
+        value: "gemini-2.5-flash"
+      - key: "SYSTEM_TEMPERATURE"
+        value: "0.3"
+      - key: "USER_BASE_URL"
+        value: "https://api.moonshot.cn/v1"
+      - key: "USER_MODEL"
+        value: "kimi-k2.5"
+      - key: "USER_TEMPERATURE"
+        value: "1.0"
+      - key: "APP_ENV"
+        value: "production"
+      - key: "LOG_LEVEL"
+        value: "INFO"
+      - key: "SCHEDULE_EXTRACTOR_MINUTES"
+        value: "10"
+      - key: "SCHEDULE_COMPILER_MINUTES"
+        value: "30"
+    resources:
+      memory: "512Mi"
+      cpu: "0.5"
+    # 对外提供 API
+    ports:
+      - port: "8000"
+        protocol: "http"
+
+  # 批处理提取器 - 每10分钟
+  extractor:
+    type: "cronjob"
+    command: "python batch_extractor.py --once"
+    schedule: "*/10 * * * *"  # 每10分钟
+    env:
+      - key: "SYSTEM_BASE_URL"
+        value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+      - key: "SYSTEM_API_KEY"
+      - key: "SYSTEM_MODEL"
+        value: "gemini-2.5-flash"
+      - key: "SUPABASE_URL"
+      - key: "SUPABASE_SERVICE_ROLE_KEY"
+
+  # 编译器 - 每30分钟
+  compiler:
+    type: "cronjob"
+    command: "python compiler.py --once"
+    schedule: "*/30 * * * *"  # 每30分钟
+    env:
+      - key: "SYSTEM_BASE_URL"
+        value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+      - key: "SYSTEM_API_KEY"
+      - key: "SYSTEM_MODEL"
+        value: "gemini-2.5-flash"
+      - key: "SUPABASE_URL"
+      - key: "SUPABASE_SERVICE_ROLE_KEY"
+
+  # 生命周期管理 - 每天凌晨2点
+  lifecycle:
+    type: "cronjob"
+    command: "python lifecycle_manager.py"
+    schedule: "0 2 * * *"  # 每天凌晨2点
+    env:
+      - key: "SUPABASE_URL"
+      - key: "SUPABASE_SERVICE_ROLE_KEY"

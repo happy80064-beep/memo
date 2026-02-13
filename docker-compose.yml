@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # 批处理提取器服务
+  extractor:
+    build: .
+    container_name: memos-extractor
+    command: python batch_extractor.py
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 编译器服务
+  compiler:
+    build: .
+    container_name: memos-compiler
+    command: python compiler.py
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - extractor
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # (可选) 定时任务模式 - 使用 Ofelia 替代持续运行
+  scheduler:
+    build: .
+    container_name: memos-scheduler
+    profiles: ["scheduler"]
+    command: echo "Use 'docker-compose --profile scheduler up' to enable scheduled mode"
+    restart: "no"
+
+# Ofelia 定时任务调度器 (可选方案)
+# 使用 profiles 特性，需要 docker-compose --profile scheduler up 才会启动

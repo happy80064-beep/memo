@@ -1,0 +1,54 @@
+version: '3.8'
+
+# 使用 Ofelia 定时任务调度器
+# 运行: docker-compose -f docker-compose.scheduler.yml up -d
+
+services:
+  ofelia:
+    image: mcuadros/ofelia:latest
+    container_name: memos-scheduler
+    restart: unless-stopped
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      # 提取器: 每10分钟
+      ofelia.job-run.extractor.schedule: "@every 10m"
+      ofelia.job-run.extractor.container: "memos-extractor-job"
+      # 编译器: 每30分钟
+      ofelia.job-run.compiler.schedule: "@every 30m"
+      ofelia.job-run.compiler.container: "memos-compiler-job"
+      # 生命周期管理: 每天凌晨2点
+      ofelia.job-run.lifecycle.schedule: "0 0 2 * * *"
+      ofelia.job-run.lifecycle.container: "memos-lifecycle-job"
+
+  extractor-job:
+    build: .
+    container_name: memos-extractor-job
+    command: python batch_extractor.py --once
+    env_file:
+      - .env
+    restart: "no"
+    labels:
+      ofelia.enabled: "true"
+
+  compiler-job:
+    build: .
+    container_name: memos-compiler-job
+    command: python compiler.py --once
+    env_file:
+      - .env
+    restart: "no"
+    labels:
+      ofelia.enabled: "true"
+
+  # 生命周期管理 - 每天凌晨2点运行
+  lifecycle-job:
+    build: .
+    container_name: memos-lifecycle-job
+    command: python lifecycle_manager.py
+    env_file:
+      - .env
+    restart: "no"
+    labels:
+      ofelia.enabled: "true"

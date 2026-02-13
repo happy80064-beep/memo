@@ -1,0 +1,18 @@
+[Unit]
+Description=MemOS Batch Extractor Service
+After=network.target
+
+[Service]
+Type=simple
+User=memos
+WorkingDirectory=/opt/memos
+Environment=PATH=/opt/memos/venv/bin
+EnvironmentFile=/opt/memos/.env
+ExecStart=/opt/memos/venv/bin/python batch_extractor.py
+Restart=always
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

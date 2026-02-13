@@ -1,0 +1,33 @@
+# Zeabur 部署配置
+# 项目会自动构建并部署
+
+version: "1.0"
+services:
+  memos:
+    type: "dockerfile"
+    dockerfile: "Dockerfile.zeabur"
+    env:
+      # 这些会在 Zeabur 控制台设置
+      - key: "SYSTEM_BASE_URL"
+        value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+      - key: "SYSTEM_MODEL"
+        value: "gemini-2.5-flash"
+      - key: "SYSTEM_TEMPERATURE"
+        value: "0.3"
+      - key: "USER_BASE_URL"
+        value: "https://api.moonshot.cn/v1"
+      - key: "USER_MODEL"
+        value: "kimi-k2-5"
+      - key: "USER_TEMPERATURE"
+        value: "0.7"
+      - key: "APP_ENV"
+        value: "production"
+      - key: "LOG_LEVEL"
+        value: "INFO"
+      - key: "SCHEDULE_EXTRACTOR_MINUTES"
+        value: "10"
+      - key: "SCHEDULE_COMPILER_MINUTES"
+        value: "30"
+    resources:
+      memory: "512Mi"
+      cpu: "0.5"

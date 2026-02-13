@@ -1,0 +1,23 @@
+# Zeabur Dockerfile
+# 合并提取器和编译器到一个容器，内部调度运行
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 安装依赖
+RUN pip install --no-cache-dir \
+    supabase>=2.0.0 \
+    langchain-openai>=0.2.0 \
+    python-dotenv>=1.0.0 \
+    requests>=2.31.0
+
+# 复制应用代码
+COPY *.py .
+COPY zeabur-entrypoint.sh .
+
+# 设置权限
+RUN chmod +x zeabur-entrypoint.sh
+
+# 容器启动时运行调度器
+CMD ["./zeabur-entrypoint.sh"]
