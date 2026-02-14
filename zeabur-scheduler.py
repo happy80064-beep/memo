@@ -87,6 +87,52 @@ def run_lifecycle():
         return False
 
 
+def run_snapshot():
+    """运行每日快照 (L1)"""
+    log("[SNAPSHOT] Starting daily_snapshots...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "daily_snapshots.py"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            encoding='utf-8',
+            errors='ignore'
+        )
+        if result.returncode == 0:
+            log("[SNAPSHOT] Completed successfully")
+            return True
+        else:
+            log(f"[SNAPSHOT] Error: {result.stderr[:200]}")
+            return False
+    except Exception as e:
+        log(f"[SNAPSHOT] Exception: {e}")
+        return False
+
+
+def run_profile():
+    """运行画像洞察 (L2)"""
+    log("[PROFILE] Starting profile_insights...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "profile_insights.py", "7"],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            encoding='utf-8',
+            errors='ignore'
+        )
+        if result.returncode == 0:
+            log("[PROFILE] Completed successfully")
+            return True
+        else:
+            log(f"[PROFILE] Error: {result.stderr[:200]}")
+            return False
+    except Exception as e:
+        log(f"[PROFILE] Exception: {e}")
+        return False
+
+
 def main():
     """主调度循环"""
     log("=" * 60)
@@ -95,13 +141,14 @@ def main():
     log("Schedule:")
     log("  - Extractor: Every 10 minutes")
     log("  - Compiler: Every 30 minutes")
+    log("  - L1 Snapshot: Every day at 01:00")
+    log("  - L2 Profile: Every Sunday at 03:00")
     log("  - Lifecycle: Every day at 02:00")
     log("=" * 60)
 
     # 配置（秒）
     EXTRACTOR_INTERVAL = 10 * 60  # 10分钟
     COMPILER_INTERVAL = 30 * 60   # 30分钟
-    LIFECYCLE_INTERVAL = 24 * 60 * 60  # 24小时（但会检查是否是2点）
 
     # 首次运行
     log("Running initial tasks...")
@@ -113,6 +160,8 @@ def main():
     last_extractor = time.time()
     last_compiler = time.time()
     last_lifecycle_date = datetime.now().strftime('%Y-%m-%d')
+    last_snapshot_date = datetime.now().strftime('%Y-%m-%d')
+    last_profile_week = datetime.now().isocalendar()[1]  # 当前周数
 
     log("Entering main loop...")
 
@@ -120,6 +169,8 @@ def main():
         now = time.time()
         current_datetime = datetime.now()
         current_date = current_datetime.strftime('%Y-%m-%d')
+        current_hour = current_datetime.hour
+        current_week = current_datetime.isocalendar()[1]
 
         # 检查提取器
         if now - last_extractor >= EXTRACTOR_INTERVAL:
@@ -131,8 +182,18 @@ def main():
             run_compiler()
             last_compiler = now
 
-        # 检查生命周期（每天2点运行一次）
-        if current_date != last_lifecycle_date and current_datetime.hour == 2:
+        # 检查 L1 每日快照（每天1点运行）
+        if current_date != last_snapshot_date and current_hour == 1:
+            run_snapshot()
+            last_snapshot_date = current_date
+
+        # 检查 L2 画像洞察（每周日3点运行）
+        if current_week != last_profile_week and current_datetime.weekday() == 6 and current_hour == 3:
+            run_profile()
+            last_profile_week = current_week
+
+        # 检查生命周期（每天2点运行）
+        if current_date != last_lifecycle_date and current_hour == 2:
             run_lifecycle()
             last_lifecycle_date = current_date
 
