@@ -1,33 +1,34 @@
-# Zeabur 部署配置
-# 项目会自动构建并部署
+# Zeabur 调度器部署配置
+# 后台定时任务：提取器 + 编译器 + 生命周期管理
+# 不暴露 HTTP 端口，只运行后台任务
 
 version: "1.0"
 services:
-  memos:
+  memos-scheduler:
     type: "dockerfile"
     dockerfile: "Dockerfile.zeabur"
+    # 注意：调度器不需要暴露端口
     env:
-      # 这些会在 Zeabur 控制台设置
+      # 系统模型配置
       - key: "SYSTEM_BASE_URL"
         value: "https://generativelanguage.googleapis.com/v1beta/openai/"
       - key: "SYSTEM_MODEL"
         value: "gemini-2.5-flash"
       - key: "SYSTEM_TEMPERATURE"
         value: "0.3"
-      - key: "USER_BASE_URL"
-        value: "https://api.moonshot.cn/v1"
-      - key: "USER_MODEL"
-        value: "kimi-k2-5"
-      - key: "USER_TEMPERATURE"
-        value: "0.7"
+
+      # 应用配置
       - key: "APP_ENV"
         value: "production"
       - key: "LOG_LEVEL"
         value: "INFO"
+
+      # 调度配置
       - key: "SCHEDULE_EXTRACTOR_MINUTES"
         value: "10"
       - key: "SCHEDULE_COMPILER_MINUTES"
         value: "30"
+
     resources:
       memory: "512Mi"
       cpu: "0.5"

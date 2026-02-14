@@ -1,0 +1,30 @@
+# MemOS Web API Dockerfile
+# 专门用于运行 Web 聊天服务
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 安装完整依赖（Web服务需要所有功能）
+RUN pip install --no-cache-dir \
+    supabase>=2.0.0 \
+    langchain-openai>=0.2.0 \
+    openai>=1.0.0 \
+    fastapi>=0.100.0 \
+    uvicorn>=0.23.0 \
+    python-dotenv>=1.0.0 \
+    requests>=2.31.0 \
+    PyPDF2>=3.0.0 \
+    python-docx>=1.1.0 \
+    langchain>=0.3.0 \
+    langgraph>=0.2.0
+
+# 复制应用代码（不包括 .env）
+COPY *.py .
+COPY *.html .
+
+# 暴露端口
+EXPOSE 8000
+
+# 启动 Web API 服务
+CMD ["python", "web_app_multimodal.py"]
