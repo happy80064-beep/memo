@@ -21,6 +21,12 @@ services:
       # 生命周期管理: 每天凌晨2点
       ofelia.job-run.lifecycle.schedule: "0 0 2 * * *"
       ofelia.job-run.lifecycle.container: "memos-lifecycle-job"
+      # L1 每日快照: 每天凌晨1点
+      ofelia.job-run.snapshot.schedule: "0 0 1 * * *"
+      ofelia.job-run.snapshot.container: "memos-snapshot-job"
+      # L2 画像洞察: 每周日凌晨3点
+      ofelia.job-run.profile.schedule: "0 0 3 * * 0"
+      ofelia.job-run.profile.container: "memos-profile-job"
 
   extractor-job:
     build: .
@@ -47,6 +53,28 @@ services:
     build: .
     container_name: memos-lifecycle-job
     command: python lifecycle_manager.py
+    env_file:
+      - .env
+    restart: "no"
+    labels:
+      ofelia.enabled: "true"
+
+  # L1 每日快照 - 每天凌晨1点运行
+  snapshot-job:
+    build: .
+    container_name: memos-snapshot-job
+    command: python daily_snapshots.py
+    env_file:
+      - .env
+    restart: "no"
+    labels:
+      ofelia.enabled: "true"
+
+  # L2 画像洞察 - 每周日凌晨3点运行
+  profile-job:
+    build: .
+    container_name: memos-profile-job
+    command: python profile_insights.py 7
     env_file:
       - .env
     restart: "no"

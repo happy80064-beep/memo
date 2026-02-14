@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
 
     # Pre-load the graph to avoid cold start
     get_graph()
-    print("✓ Graph initialized")
+    print("[OK] Graph initialized")
 
     yield
 
@@ -349,4 +349,6 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+    port = int(os.getenv("PORT", 9000))  # 使用 9000 避免冲突
+    print(f"Starting server on http://localhost:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
