@@ -134,7 +134,7 @@ class ProfileInsightExtractor:
         # 保存模式
         for pattern in insights.get("patterns", []):
             self._save_profile_item(
-                category="pattern",
+                category="habit",
                 content=pattern.get("insight", ""),
                 evidence=pattern.get("evidence", []),
                 confidence=pattern.get("confidence", 0.5),
@@ -156,7 +156,7 @@ class ProfileInsightExtractor:
         # 保存经验教训
         for lesson in insights.get("lessons_learned", []):
             self._save_profile_item(
-                category="lesson",
+                category="mental_model",
                 content=f"{lesson.get('situation')} → {lesson.get('lesson')}",
                 evidence=[lesson.get("application", "")],
                 confidence=0.8,
