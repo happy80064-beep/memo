@@ -818,8 +818,6 @@ class MemOSGraph:
             content_results = await self._search_by_content(content_keywords)
             all_results.extend([{**r, '_source': 'content', '_score': 2} for r in content_results])
 
-        all_results = []
-
         # 策略 1: 路径模式搜索（改进版）
         if path_keywords:
             path_results = await self._search_by_path_patterns(path_keywords)
@@ -1361,14 +1359,10 @@ class MemOSGraph:
             category = p.get('category', '')
             content = p.get('content', '')
 
-            # PERSONAL_QUERY 时只保留技能和习惯，不暴露家庭关系
-            if intent == "PERSONAL_QUERY":
-                if category in ['skill', 'habit', 'mental_model']:
-                    profile_parts.append(f"- {content}")
-            else:
-                # 其他意图可以显示更多，但仍避免敏感信息
-                if category in ['skill', 'habit', 'mental_model', 'preference']:
-                    profile_parts.append(f"- {content}")
+            # 统一画像过滤：只保留一般性特征，不保留具体家庭关系详情
+            # 家庭相关信息应通过检索到的具体事实来回答，而不是通过画像
+            if category in ['skill', 'habit', 'mental_model', 'preference']:
+                profile_parts.append(f"- {content}")
 
         profile_text = "\n".join(profile_parts) if profile_parts else ""
         if profile_text:
@@ -1406,10 +1400,10 @@ class MemOSGraph:
    - 只有在用户明确询问某人时，才提及该人姓名
    - 不要罗列"我存储了什么信息"
 
-2. **禁止猜测**:
-   - 不知道就说"没有记录"或"不记得了"
-   - 禁止使用"说不定..."、"也许是..."、"我猜..."、"说不定是提前庆祝..."
-   - 不要基于生日等信息推测活动目的
+2. **基于事实回答**:
+   - 如果检索到相关事实，直接基于事实回答用户问题
+   - 只有确实没有检索到相关信息时，才说"没有记录"或"不记得了"
+   - 禁止使用"说不定..."、"也许是..."、"我猜..."等猜测性语言
 
 3. **简洁直接**:
    - 直接回答用户问题
