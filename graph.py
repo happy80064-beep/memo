@@ -1263,10 +1263,17 @@ class MemOSGraph:
             if path in seen:
                 # 合并分数
                 seen[path]['_score'] += score
-                # 保留匹配的事实
-                if r.get('matched_fact') and not seen[path].get('matched_fact'):
-                    seen[path]['matched_fact'] = r['matched_fact']
-                    print(f"[DEDUP] Added matched_fact to {path}")
+                # 合并匹配的事实（关键修复：保留所有事实，不只是第一个）
+                if r.get('matched_fact'):
+                    existing = seen[path].get('matched_fact', '')
+                    new_fact = r['matched_fact']
+                    # 去重追加，用分号分隔多个事实
+                    if new_fact not in existing:
+                        if existing:
+                            seen[path]['matched_fact'] = existing + '; ' + new_fact
+                        else:
+                            seen[path]['matched_fact'] = new_fact
+                        print(f"[DEDUP] Merged fact to {path}: {new_fact[:50]}...")
             else:
                 seen[path] = r
                 ranked.append(r)
@@ -1383,13 +1390,16 @@ class MemOSGraph:
                 matched_fact = e.get("matched_fact", "")
                 entity_name = e.get("name", "")
                 if matched_fact:
-                    # 清理 matched_fact 中的标记，保留完整事实内容
-                    clean_fact = matched_fact.replace("[相关事实] ", "")
-                    # 如果事实不包含实体名称，添加前缀使其完整（谁的+什么）
-                    if entity_name and entity_name not in clean_fact:
-                        clean_fact = f"{entity_name}: {clean_fact}"
-                    retrieved_facts.append(clean_fact)
-                    print(f"[SYS_PROMPT] Added fact: {clean_fact[:50]}")
+                    # 支持分号分隔的多个事实
+                    facts_list = [f.strip() for f in matched_fact.split(';') if f.strip()]
+                    for fact in facts_list:
+                        # 清理标记
+                        clean_fact = fact.replace("[相关事实] ", "")
+                        # 如果事实不包含实体名称，添加前缀
+                        if entity_name and entity_name not in clean_fact:
+                            clean_fact = f"{entity_name}: {clean_fact}"
+                        retrieved_facts.append(clean_fact)
+                        print(f"[SYS_PROMPT] Added fact: {clean_fact[:50]}")
 
         retrieved_text = "\n".join([f"- {f}" for f in retrieved_facts]) if retrieved_facts else ""
         if retrieved_text:
