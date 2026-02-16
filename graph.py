@@ -719,22 +719,99 @@ class MemOSGraph:
 
         return unique
 
+    async def _semantic_understand(self, query: str) -> Dict:
+        """
+        语义理解层：用 LLM 深度理解用户查询
+        返回结构化理解结果，指导后续检索
+        """
+        prompt = f"""深度理解用户查询，提取语义信息。
+
+用户查询："{query}"
+
+分析要求：
+1. 查询目标：用户想要找到什么信息？
+2. 涉及实体：提到了哪些人物、公司、项目、概念？
+3. 关系类型：家庭关系、工作关系、时间关系等
+4. 信息类型：生日、职位、历史事件、偏好等
+5. 可能同义词：用户用词的可能替代说法
+
+输出JSON格式：
+{{
+    "query_goal": "查询目标描述",
+    "entities": [
+        {{"name": "实体名", "type": "people/work/concept", "confidence": 0.9}}
+    ],
+    "relation_type": "家庭/工作/时间/其他",
+    "info_type": "生日/职位/地点/事件/其他",
+    "search_terms": ["用于搜索的关键词1", "关键词2"],
+    "synonyms": {{"原始词": ["同义词1", "同义词2"]}}
+}}
+
+只输出JSON，不要其他文字。"""
+
+        try:
+            response = await self.system_llm.ainvoke([HumanMessage(content=prompt)])
+            content = response.content.strip()
+
+            # 清理 JSON
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+
+            result = json.loads(content.strip())
+            print(f"[Semantic] 理解结果: {result.get('query_goal', 'N/A')}")
+            return result
+
+        except Exception as e:
+            print(f"[WARN] 语义理解失败: {e}")
+            return None
+
     async def _smart_search(self, query: str, intent: str,
                            search_strategy: Dict = None,
                            time_expansion: bool = False,
                            time_mentioned: List[str] = None) -> List[Dict]:
         """
-        智能混合搜索 3.0（认知增强）
-        多策略并行搜索，支持时间扩展和搜索策略优化
+        智能混合搜索 4.0（语义理解增强）
+        先语义理解，再精准检索
         """
         import re
 
+        all_results = []
+
+        # ===== 步骤1: 语义理解（优先）=====
+        semantic_understanding = await self._semantic_understand(query)
+
+        if semantic_understanding:
+            # 基于语义理解构建精准搜索
+            search_terms = semantic_understanding.get('search_terms', [])
+            entities = semantic_understanding.get('entities', [])
+            info_type = semantic_understanding.get('info_type', '')
+
+            print(f"[SmartSearch] 语义搜索: terms={search_terms}, entities={len(entities)}")
+
+            # 使用语义搜索词查找事实
+            if search_terms:
+                fact_results = await self._search_by_semantic_terms(search_terms, entities)
+                all_results.extend([{**r, '_source': 'semantic', '_score': 5} for r in fact_results])
+
+        # ===== 步骤2: 传统关键词搜索（备用/补充）=====
         # 提取多种类型的关键词
         path_keywords = self._extract_smart_keywords(query, 'path')
         content_keywords = self._extract_smart_keywords(query, 'content')
         semantic_keywords = self._extract_smart_keywords(query, 'semantic')
 
-        print(f"[SmartSearch] Path: {path_keywords}, Content: {content_keywords}, Semantic: {semantic_keywords}")
+        print(f"[SmartSearch] 关键词搜索: Path={path_keywords}, Content={content_keywords}")
+
+        # 策略 1: 路径模式搜索
+        if path_keywords:
+            path_results = await self._search_by_path_patterns(path_keywords)
+            all_results.extend([{**r, '_source': 'path', '_score': 3} for r in path_results])
+
+        # 策略 2: 名称/描述内容搜索
+        if content_keywords:
+            content_results = await self._search_by_content(content_keywords)
+            all_results.extend([{**r, '_source': 'content', '_score': 2} for r in content_results])
 
         all_results = []
 
@@ -895,8 +972,33 @@ class MemOSGraph:
         results = []
 
         try:
+            # 从查询中提取核心关键词（而不是依赖传入的keywords）
+            core_keywords = []
+            query_lower = query.lower()
+
+            # 人物相关
+            if '父' in query_lower or '爸' in query_lower:
+                core_keywords.extend(['父亲', '爸爸', '爸', '李国栋'])
+            if '母' in query_lower or '妈' in query_lower:
+                core_keywords.extend(['母亲', '妈妈', '妈', '杨桂花'])
+            if '奶' in query_lower:
+                core_keywords.extend(['奶奶', '奶', '高剑秋'])
+
+            # 主题相关
+            if '生日' in query_lower:
+                core_keywords.append('生日')
+            if '工作' in query_lower or '公司' in query_lower:
+                core_keywords.extend(['工作', '公司', '职位'])
+            if '大学' in query_lower or '学校' in query_lower:
+                core_keywords.extend(['大学', '学校', '专业'])
+
+            # 合并传入的关键词
+            all_keywords = list(set(core_keywords + [kw for kw in keywords if len(kw) >= 2]))
+
             # 策略1: 如果有有效关键词，用关键词搜索
-            valid_keywords = [kw for kw in keywords if len(kw) >= 2 and kw not in ['什么', '怎么', '为什么', '记得', '知道']]
+            valid_keywords = [kw for kw in all_keywords if kw not in ['什么', '怎么', '为什么', '记得', '知道', '对了']]
+
+            print(f"[AtomicSearch] Keywords: {valid_keywords}")
 
             if valid_keywords:
                 # 搜索包含关键词的事实
@@ -961,6 +1063,70 @@ class MemOSGraph:
 
         except Exception as e:
             print(f"[WARN] 原子事实搜索失败: {e}")
+
+        return results
+
+    async def _search_by_semantic_terms(self, search_terms: List[str], entities: List[Dict]) -> List[Dict]:
+        """
+        基于语义理解结果搜索事实
+        使用语义搜索词而不是简单的关键词匹配
+        """
+        results = []
+
+        try:
+            # 构建搜索条件 - 使用语义搜索词
+            entity_names = [e.get('name', '') for e in entities if e.get('name')]
+
+            # 策略1: 按实体名搜索其所有事实
+            for name in entity_names[:3]:  # 限制数量
+                facts_result = self.supabase.table("mem_l3_atomic_facts") \
+                    .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                    .eq("status", "active") \
+                    .ilike("content", f"%{name}%") \
+                    .limit(10) \
+                    .execute()
+
+                if facts_result.data:
+                    for fact in facts_result.data:
+                        entity = fact.get("mem_l3_entities", {})
+                        if entity:
+                            results.append({
+                                **entity,
+                                "matched_fact": fact.get("content", ""),
+                                "fact_entity_id": fact.get("entity_id")
+                            })
+
+            # 策略2: 按语义搜索词搜索
+            for term in search_terms[:5]:
+                if len(term) < 2:
+                    continue
+
+                facts_result = self.supabase.table("mem_l3_atomic_facts") \
+                    .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                    .eq("status", "active") \
+                    .ilike("content", f"%{term}%") \
+                    .limit(5) \
+                    .execute()
+
+                if facts_result.data:
+                    for fact in facts_result.data:
+                        entity = fact.get("mem_l3_entities", {})
+                        if entity:
+                            enriched = {
+                                **entity,
+                                "matched_fact": fact.get("content", ""),
+                                "fact_entity_id": fact.get("entity_id")
+                            }
+                            # 去重
+                            if not any(r.get('path') == enriched.get('path') and
+                                      r.get('matched_fact') == enriched.get('matched_fact')
+                                      for r in results):
+                                results.append(enriched)
+
+            print(f"[SemanticSearch] 找到 {len(results)} 条语义匹配")
+
+        except Exception as e:
+            print(f"[WARN] 语义搜索失败: {e}")
 
         return results
 
