@@ -1063,6 +1063,12 @@ class MemOSGraph:
         seen = {}
         ranked = []
 
+        # 调试：显示所有输入结果
+        print(f"[DEDUP] Input {len(results)} results:")
+        for r in results:
+            has_fact = "✓" if r.get('matched_fact') else "✗"
+            print(f"  - {r.get('path')} (score:{r.get('_score',1)}) {has_fact}")
+
         for r in results:
             path = r.get('path')
             if not path:
@@ -1076,9 +1082,16 @@ class MemOSGraph:
                 # 保留匹配的事实
                 if r.get('matched_fact') and not seen[path].get('matched_fact'):
                     seen[path]['matched_fact'] = r['matched_fact']
+                    print(f"[DEDUP] Added matched_fact to {path}")
             else:
                 seen[path] = r
                 ranked.append(r)
+
+        # 调试：显示输出结果
+        print(f"[DEDUP] Output {len(ranked)} results:")
+        for r in ranked:
+            has_fact = "✓" if r.get('matched_fact') else "✗"
+            print(f"  - {r.get('path')} {has_fact}")
 
         # 按分数降序
         ranked.sort(key=lambda x: x.get('_score', 0), reverse=True)
@@ -1179,14 +1192,20 @@ class MemOSGraph:
         retrieved_facts = []
         needs_retrieval = intent in ["PERSONAL_QUERY", "WORK_QUERY", "TASK", "FOLLOW_UP"]
 
+        # 调试：显示接收到的检索结果
+        print(f"[SYS_PROMPT] Received {len(retrieved)} entities")
+        for e in retrieved[:3]:
+            has_fact = "✓" if e.get('matched_fact') else "✗"
+            print(f"  - {e.get('path')} {has_fact}: {e.get('matched_fact','')[:50]}")
+
         if needs_retrieval and retrieved:
             for e in retrieved[:3]:  # 只取前3个最相关的
                 matched_fact = e.get("matched_fact", "")
                 if matched_fact:
                     # 清理 matched_fact 中的标记，保留完整事实内容
-                    # 格式: "[时间匹配: xxx] 实际事实内容" -> "[时间匹配: xxx] 实际事实内容"
                     clean_fact = matched_fact.replace("[相关事实] ", "")
                     retrieved_facts.append(clean_fact)
+                    print(f"[SYS_PROMPT] Added fact: {clean_fact[:50]}")
 
         retrieved_text = "\n".join([f"- {f}" for f in retrieved_facts]) if retrieved_facts else ""
         if retrieved_text:
