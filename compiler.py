@@ -147,10 +147,34 @@ class EntityCompiler:
         if len(facts) < 2:
             return []
 
-        # 使用 LLM 检测冲突
+        # 步骤1: 去重 - 相同内容的事实，只保留最新的
+        content_to_fact = {}
+        duplicates = []  # 记录重复的事实（需要被标记为superseded）
+
+        for fact in sorted(facts, key=lambda x: x['created_at']):
+            content = fact['content'].strip()
+            if content in content_to_fact:
+                # 发现重复内容，旧的事实标记为重复
+                duplicates.append({
+                    "old_fact_id": content_to_fact[content]["id"],
+                    "new_fact_id": fact["id"],
+                    "reason": "重复内容，保留最新"
+                })
+                # 更新为最新的
+                content_to_fact[content] = fact
+            else:
+                content_to_fact[content] = fact
+
+        # 去重后的唯一事实列表
+        unique_facts = list(content_to_fact.values())
+
+        if len(unique_facts) < 2:
+            return duplicates  # 只有重复，没有冲突
+
+        # 步骤2: 使用 LLM 检测真正的冲突（不同内容但矛盾）
         facts_json = json.dumps([
             {"id": f["id"], "content": f["content"], "created_at": f["created_at"]}
-            for f in facts
+            for f in unique_facts
         ], ensure_ascii=False, indent=2)
 
         prompt = f"""
@@ -187,11 +211,25 @@ class EntityCompiler:
                 content = content.split("```")[1].split("```")[0]
 
             data = json.loads(content.strip())
-            return data.get("conflicts", [])
+            conflicts = data.get("conflicts", [])
+
+            # 合并重复检测和冲突检测的结果
+            all_supersedes = duplicates + conflicts
+
+            # 去重：同一个旧事实只保留一个替代关系
+            seen_old_ids = set()
+            unique_supersedes = []
+            for item in all_supersedes:
+                if item["old_fact_id"] not in seen_old_ids:
+                    seen_old_ids.add(item["old_fact_id"])
+                    unique_supersedes.append(item)
+
+            return unique_supersedes
 
         except Exception as e:
             print(f"冲突检测解析失败: {e}")
-            return []
+            # 即使LLM失败，也返回重复检测结果
+            return duplicates
 
     def supersede_facts(self, conflicts: List[Dict]):
         """标记被替代的事实"""
