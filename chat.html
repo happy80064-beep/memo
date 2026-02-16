@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MemOS Chat</title>
+    <title>MemOS v2.1 - Multimodal AI Memory</title>
     <style>
         * {
             margin: 0;
@@ -13,37 +13,37 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
         }
-        .chat-container {
-            width: 90%;
-            max-width: 800px;
-            height: 90vh;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
             overflow: hidden;
         }
-        .chat-header {
+        .header {
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
+            padding: 30px;
             text-align: center;
         }
-        .chat-header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
         }
-        .chat-header p {
+        .header p {
             opacity: 0.9;
             font-size: 14px;
         }
-        .chat-messages {
+        .chat-container {
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+        .messages {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
@@ -69,11 +69,13 @@
             font-size: 15px;
             line-height: 1.5;
             word-wrap: break-word;
+            max-width: 100%;
         }
         .message.user .message-bubble {
             background: #667eea;
             color: white;
             border-bottom-right-radius: 4px;
+            text-align: left;
         }
         .message.assistant .message-bubble {
             background: white;
@@ -86,14 +88,15 @@
             color: #999;
             margin-top: 5px;
         }
-        .chat-input-area {
+        .input-area {
             padding: 20px;
             background: white;
             border-top: 1px solid #eee;
         }
-        .input-container {
+        .input-row {
             display: flex;
             gap: 10px;
+            margin-bottom: 10px;
         }
         #message-input {
             flex: 1;
@@ -126,9 +129,57 @@
             cursor: not-allowed;
             transform: none;
         }
+        /* File upload styles */
+        .file-upload {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        .file-upload-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            color: #666;
+        }
+        .file-upload-label:hover {
+            background: #e8e8e8;
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .file-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .file-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
         .typing-indicator {
             display: none;
-            padding: 15px 20px;
+            padding: 15px;
         }
         .typing-indicator.active {
             display: block;
@@ -159,67 +210,106 @@
             font-size: 48px;
             margin-bottom: 20px;
         }
+        .attachment-preview {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <h1>MemOS v2.0</h1>
-            <p>AI Memory System with RAG</p>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 MemOS v2.1</h1>
+            <p>Multimodal AI Memory System - 支持文本、图片、PDF、文档</p>
         </div>
 
-        <div class="chat-messages" id="chat-messages">
-            <div class="empty-state">
-                <div class="empty-state-icon">🧠</div>
-                <p>Start a conversation with MemOS</p>
-                <p style="font-size: 12px; margin-top: 10px;">
-                    Your conversations will be remembered and used to build your personal knowledge base.
-                </p>
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <p>开始与 MemOS 对话</p>
+                    <p style="font-size: 12px; margin-top: 10px;">
+                        您可以发送文字，或上传图片、PDF、Word 文档进行分析
+                    </p>
+                </div>
             </div>
-        </div>
 
-        <div class="typing-indicator" id="typing-indicator">
-            <div class="message assistant">
-                <div class="message-bubble">
-                    <div class="typing-dots">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="chat-input-area">
-            <div class="input-container">
-                <input
-                    type="text"
-                    id="message-input"
-                    placeholder="Type your message..."
-                    autocomplete="off"
-                />
-                <button id="send-btn">Send</button>
+            <div class="input-area">
+                <!-- File Upload -->
+                <div class="file-upload">
+                    <input type="file" id="file-input" multiple accept="image/*,.pdf,.doc,.docx,.txt">
+                    <label for="file-input" class="file-upload-label">
+                        📎 选择文件 (图片/PDF/文档)
+                    </label>
+                    <span id="file-count" style="color: #666; font-size: 14px;"></span>
+                </div>
+                <div class="file-list" id="file-list"></div>
+
+                <!-- Message Input -->
+                <div class="input-row">
+                    <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off">
+                    <button id="send-btn">发送</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Generate unique session ID
         const sessionId = 'web-' + Math.random().toString(36).substr(2, 9);
-        const chatMessages = document.getElementById('chat-messages');
+        const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const typingIndicator = document.getElementById('typing-indicator');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const fileCount = document.getElementById('file-count');
 
+        let selectedFiles = [];
         let isProcessing = false;
 
-        // Add message to chat
-        function addMessage(role, content, metadata = {}) {
-            // Remove empty state if exists
-            const emptyState = chatMessages.querySelector('.empty-state');
-            if (emptyState) {
-                emptyState.remove();
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files);
+            updateFileList();
+        });
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            if (selectedFiles.length > 0) {
+                fileCount.textContent = `已选择 ${selectedFiles.length} 个文件`;
+                selectedFiles.forEach((file, index) => {
+                    const tag = document.createElement('span');
+                    tag.className = 'file-tag';
+                    tag.innerHTML = `${file.name} <span class="remove" onclick="removeFile(${index})">×</span>`;
+                    fileList.appendChild(tag);
+                });
+            } else {
+                fileCount.textContent = '';
             }
+        }
+
+        window.removeFile = (index) => {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        };
+
+        function addMessage(role, content, attachments = []) {
+            const emptyState = messagesDiv.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
 
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
@@ -228,89 +318,93 @@
             bubble.className = 'message-bubble';
             bubble.textContent = content;
 
-            messageDiv.appendChild(bubble);
-
-            // Add metadata for assistant messages
-            if (role === 'assistant' && metadata.intent) {
-                const meta = document.createElement('div');
-                meta.className = 'message-meta';
-                meta.textContent = `Intent: ${metadata.intent}`;
-                messageDiv.appendChild(meta);
+            // Add attachment previews
+            if (attachments.length > 0) {
+                attachments.forEach(att => {
+                    if (att.mime_type && att.mime_type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = att.url || att.preview;
+                        img.className = 'attachment-preview';
+                        bubble.appendChild(document.createElement('br'));
+                        bubble.appendChild(img);
+                    }
+                });
             }
 
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            messageDiv.appendChild(bubble);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Send message to API
         async function sendMessage() {
             const message = messageInput.value.trim();
-            if (!message || isProcessing) return;
+            if ((!message && selectedFiles.length === 0) || isProcessing) return;
 
             // Add user message
-            addMessage('user', message);
+            let userContent = message || `已上传 ${selectedFiles.length} 个文件`;
+            addMessage('user', userContent);
             messageInput.value = '';
 
             // Show typing indicator
             isProcessing = true;
             sendBtn.disabled = true;
             typingIndicator.classList.add('active');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
             try {
-                // For local testing without server, use mock response
-                // In production, replace with actual API call
-                const response = await fetch('http://localhost:8000/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        session_id: sessionId
-                    })
-                });
+                let response;
+
+                if (selectedFiles.length > 0) {
+                    // Upload files with message
+                    const formData = new FormData();
+                    formData.append('message', message || '请分析这些文件');
+                    formData.append('session_id', sessionId);
+                    selectedFiles.forEach(file => formData.append('files', file));
+
+                    response = await fetch('/chat/with-files', {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else {
+                    // Text only
+                    response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: message,
+                            session_id: sessionId
+                        })
+                    });
+                }
 
                 if (!response.ok) {
-                    throw new Error('API request failed');
+                    throw new Error(`HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
-
-                // Hide typing indicator
                 typingIndicator.classList.remove('active');
-
-                // Add assistant message
-                addMessage('assistant', data.response, {
-                    intent: data.intent
-                });
+                addMessage('assistant', data.response, data.attachments_processed);
 
             } catch (error) {
-                // Hide typing indicator
                 typingIndicator.classList.remove('active');
-
-                // Show error or mock response for demo
-                addMessage('assistant',
-                    'Sorry, I cannot connect to the server. Please make sure the server is running on localhost:8000',
-                    { intent: 'ERROR' }
-                );
+                addMessage('assistant', `抱歉，出现错误：${error.message}`);
             }
+
+            // Clear files
+            selectedFiles = [];
+            fileInput.value = '';
+            updateFileList();
 
             isProcessing = false;
             sendBtn.disabled = false;
             messageInput.focus();
         }
 
-        // Event listeners
         sendBtn.addEventListener('click', sendMessage);
-
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') sendMessage();
         });
 
-        // Focus input on load
         messageInput.focus();
     </script>
 </body>
