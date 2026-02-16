@@ -1,0 +1,1036 @@
+{
+  "generated_at": "2026-02-16T12:43:12.278503",
+  "total_groups": 22,
+  "total_entities_to_merge": 57,
+  "reports": [
+    {
+      "group_id": 1,
+      "entities": [
+        {
+          "id": "0fc9b18c-23bc-429a-b4b5-4ca8a18d2ba7",
+          "path": "/concepts/python",
+          "name": "Python",
+          "fact_count": 1,
+          "facts": [
+            "Python 将用于MemOS v2.0的后端实现。"
+          ],
+          "created_at": "2026-02-13T07:11:36.905217+00:00"
+        },
+        {
+          "id": "572f20a3-8a37-487d-b630-d02a552fe068",
+          "path": "/concepts/python-backend",
+          "name": "Python后端",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:22.069612+00:00"
+        },
+        {
+          "id": "c2da67d2-c03d-4ce1-a033-b53c4b89a7fe",
+          "path": "/concepts/python-后端",
+          "name": "Python后端",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T05:40:24.981053+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "0fc9b18c-23bc-429a-b4b5-4ca8a18d2ba7",
+        "path": "/concepts/python",
+        "name": "Python",
+        "fact_count": 1,
+        "facts": [
+          "Python 将用于MemOS v2.0的后端实现。"
+        ],
+        "created_at": "2026-02-13T07:11:36.905217+00:00"
+      },
+      "total_facts": 1,
+      "merge_strategy": "以 '/concepts/python' 为主实体，迁移其他 2 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 2,
+      "entities": [
+        {
+          "id": "0ebeed61-233a-4137-9b18-b27c476c9ebb",
+          "path": "/work/projects/memos",
+          "name": "MemOS",
+          "fact_count": 5,
+          "facts": [
+            "The user wants to create the MemOS project.",
+            "MemOS is an AI memory system project.",
+            "The MemOS project can use a hierarchical architecture.",
+            "The user hopes to implement the MemOS project with Python.",
+            "The user hopes to use a file system metaphor for the MemOS project."
+          ],
+          "created_at": "2026-02-13T09:15:52.297807+00:00"
+        },
+        {
+          "id": "56f85e6b-5789-46dd-9f79-3bccf579280d",
+          "path": "/work/projects/memos-v2-0",
+          "name": "MemOS v2.0",
+          "fact_count": 23,
+          "facts": [
+            "MemOS v2.0 是一个AI记忆系统项目。",
+            "MemOS v2.0 的目标是构建一个支持文件系统隐喻的记忆架构。",
+            "MemOS v2.0 将采用分层架构。",
+            "MemOS v2.0 的分层架构包含L0缓冲层。",
+            "MemOS v2.0 的分层架构包含L1时间线。"
+          ],
+          "created_at": "2026-02-13T07:11:36.382272+00:00"
+        },
+        {
+          "id": "dd7fc33c-f26f-4746-86f8-67c6572de131",
+          "path": "/work/projects/memos-v2.0",
+          "name": "MemOS v2.0",
+          "fact_count": 18,
+          "facts": [
+            "MemOS v2.0 包含读写分离的模块。",
+            "MemOS v2.0是一个AI记忆系统。",
+            "MemOS v2.0目前处于开发中状态。",
+            "AI目前没有找到MemOS v2.0具体的部署文档或安装指南。",
+            "MemOS v2.0的架构设计主要集中在架构设计层面。"
+          ],
+          "created_at": "2026-02-14T03:26:13.277749+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "56f85e6b-5789-46dd-9f79-3bccf579280d",
+        "path": "/work/projects/memos-v2-0",
+        "name": "MemOS v2.0",
+        "fact_count": 23,
+        "facts": [
+          "MemOS v2.0 是一个AI记忆系统项目。",
+          "MemOS v2.0 的目标是构建一个支持文件系统隐喻的记忆架构。",
+          "MemOS v2.0 将采用分层架构。",
+          "MemOS v2.0 的分层架构包含L0缓冲层。",
+          "MemOS v2.0 的分层架构包含L1时间线。"
+        ],
+        "created_at": "2026-02-13T07:11:36.382272+00:00"
+      },
+      "total_facts": 46,
+      "merge_strategy": "以 '/work/projects/memos-v2-0' 为主实体，迁移其他 2 个实体的 23 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 3,
+      "entities": [
+        {
+          "id": "ac2ba9cd-abd9-4c2a-809a-e1eae71db8dc",
+          "path": "/people/claude",
+          "name": "Claude",
+          "fact_count": 14,
+          "facts": [
+            "Claude是Anthropic创建的。",
+            "Claude是一个AI助手。",
+            "Claude接受昵称。",
+            "Claude的昵称可以是“小克”。",
+            "Claude的昵称可以是“阿C”。"
+          ],
+          "created_at": "2026-02-13T09:40:31.626147+00:00"
+        },
+        {
+          "id": "d88d2eae-ffdf-4e7c-a94c-0bb4dbd9fa05",
+          "path": "/concepts/claude-xia",
+          "name": "Claude侠",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-13T09:40:33.944257+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "ac2ba9cd-abd9-4c2a-809a-e1eae71db8dc",
+        "path": "/people/claude",
+        "name": "Claude",
+        "fact_count": 14,
+        "facts": [
+          "Claude是Anthropic创建的。",
+          "Claude是一个AI助手。",
+          "Claude接受昵称。",
+          "Claude的昵称可以是“小克”。",
+          "Claude的昵称可以是“阿C”。"
+        ],
+        "created_at": "2026-02-13T09:40:31.626147+00:00"
+      },
+      "total_facts": 14,
+      "merge_strategy": "以 '/people/claude' 为主实体，迁移其他 1 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 4,
+      "entities": [
+        {
+          "id": "63e34ea0-40bb-4fba-8115-ac0b6aa22a7e",
+          "path": "/concepts/zhengzhou",
+          "name": "郑州",
+          "fact_count": 1,
+          "facts": [
+            "郑州是俊杰的故乡。"
+          ],
+          "created_at": "2026-02-13T09:40:32.397862+00:00"
+        },
+        {
+          "id": "2862b557-29fb-43cf-a4ae-a6bdd01ea0a1",
+          "path": "/concepts/zhengzhou-no-7-high-school",
+          "name": "郑州七高",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-13T09:40:33.167515+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "63e34ea0-40bb-4fba-8115-ac0b6aa22a7e",
+        "path": "/concepts/zhengzhou",
+        "name": "郑州",
+        "fact_count": 1,
+        "facts": [
+          "郑州是俊杰的故乡。"
+        ],
+        "created_at": "2026-02-13T09:40:32.397862+00:00"
+      },
+      "total_facts": 1,
+      "merge_strategy": "以 '/concepts/zhengzhou' 为主实体，迁移其他 1 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 5,
+      "entities": [
+        {
+          "id": "31901529-c317-4d3f-9782-e621e857067c",
+          "path": "/concepts/henan-university-of-technology",
+          "name": "河南工业大学",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-13T09:40:33.354729+00:00"
+        },
+        {
+          "id": "c7482946-f708-4e37-9754-fce11b4ee532",
+          "path": "/concepts/henan-industrial-university",
+          "name": "河南工业大学",
+          "fact_count": 1,
+          "facts": [
+            "河南工业大学的信息已记录在AI的档案中。"
+          ],
+          "created_at": "2026-02-14T04:56:52.701998+00:00"
+        },
+        {
+          "id": "75c5d153-ad70-4931-9e3f-825309fd0d28",
+          "path": "/concepts/河南工业大学",
+          "name": "河南工业大学",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T05:40:24.133469+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "c7482946-f708-4e37-9754-fce11b4ee532",
+        "path": "/concepts/henan-industrial-university",
+        "name": "河南工业大学",
+        "fact_count": 1,
+        "facts": [
+          "河南工业大学的信息已记录在AI的档案中。"
+        ],
+        "created_at": "2026-02-14T04:56:52.701998+00:00"
+      },
+      "total_facts": 1,
+      "merge_strategy": "以 '/concepts/henan-industrial-university' 为主实体，迁移其他 2 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 6,
+      "entities": [
+        {
+          "id": "99d2e244-9c24-4659-af91-67e975d0f4ed",
+          "path": "/concepts/tie-dan",
+          "name": "铁蛋",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-13T09:40:34.381865+00:00"
+        },
+        {
+          "id": "7d7f192a-e531-4675-bbd5-8970289ae43f",
+          "path": "/people/铁蛋",
+          "name": "铁蛋",
+          "fact_count": 2,
+          "facts": [
+            "铁蛋是一个AI助手。",
+            "铁蛋可以讨论MemOS v2.0的架构设计。"
+          ],
+          "created_at": "2026-02-16T09:57:31.733599+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "7d7f192a-e531-4675-bbd5-8970289ae43f",
+        "path": "/people/铁蛋",
+        "name": "铁蛋",
+        "fact_count": 2,
+        "facts": [
+          "铁蛋是一个AI助手。",
+          "铁蛋可以讨论MemOS v2.0的架构设计。"
+        ],
+        "created_at": "2026-02-16T09:57:31.733599+00:00"
+      },
+      "total_facts": 2,
+      "merge_strategy": "以 '/people/铁蛋' 为主实体，迁移其他 1 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 7,
+      "entities": [
+        {
+          "id": "dd94adc4-d2a4-42f4-9f45-af50f30c9b2c",
+          "path": "/concepts/docker",
+          "name": "Docker",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T05:40:26.787688+00:00"
+        },
+        {
+          "id": "263ddc86-5372-45d2-a9f2-6c0b51651c48",
+          "path": "/concepts/dockerfile",
+          "name": "Dockerfile",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T05:40:26.19133+00:00"
+        },
+        {
+          "id": "343d9260-5981-4a24-9ed7-c034b07e8153",
+          "path": "/concepts/docker-compose",
+          "name": "docker-compose",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T05:40:26.382522+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "dd94adc4-d2a4-42f4-9f45-af50f30c9b2c",
+        "path": "/concepts/docker",
+        "name": "Docker",
+        "fact_count": 0,
+        "facts": [],
+        "created_at": "2026-02-14T05:40:26.787688+00:00"
+      },
+      "total_facts": 0,
+      "merge_strategy": "以 '/concepts/docker' 为主实体，迁移其他 2 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 8,
+      "entities": [
+        {
+          "id": "149ed529-81ca-42c7-ad46-08384b0554cc",
+          "path": "/people/li-guodong",
+          "name": "李国栋",
+          "fact_count": 7,
+          "facts": [
+            "是父亲。",
+            "李国栋是李俊杰的父亲。",
+            "李国栋的星座是双鱼座或白羊座交界。",
+            "李国栋是用户的父亲。",
+            "AI 希望用户告知李国栋的生日。"
+          ],
+          "created_at": "2026-02-13T09:51:04.941262+00:00"
+        },
+        {
+          "id": "95702181-738f-4fd7-b991-fb4da2d94092",
+          "path": "/people/li-guo-dong",
+          "name": "李国栋",
+          "fact_count": 1,
+          "facts": [
+            "生日是3月20日"
+          ],
+          "created_at": "2026-02-16T07:40:56.978899+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "149ed529-81ca-42c7-ad46-08384b0554cc",
+        "path": "/people/li-guodong",
+        "name": "李国栋",
+        "fact_count": 7,
+        "facts": [
+          "是父亲。",
+          "李国栋是李俊杰的父亲。",
+          "李国栋的星座是双鱼座或白羊座交界。",
+          "李国栋是用户的父亲。",
+          "AI 希望用户告知李国栋的生日。"
+        ],
+        "created_at": "2026-02-13T09:51:04.941262+00:00"
+      },
+      "total_facts": 8,
+      "merge_strategy": "以 '/people/li-guodong' 为主实体，迁移其他 1 个实体的 1 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 9,
+      "entities": [
+        {
+          "id": "bf418c57-1f47-4216-8dfb-f5c31ff467d6",
+          "path": "/work/projects/sleep-device-jd-health-app-integration",
+          "name": "睡眠设备接入京东健康APP",
+          "fact_count": 1,
+          "facts": [
+            "睡眠设备接入京东健康APP是李俊杰在医疗领域做过的数据联通项目。"
+          ],
+          "created_at": "2026-02-14T03:49:17.937785+00:00"
+        },
+        {
+          "id": "f6c55bb1-784a-4164-9f24-d20069f2ad45",
+          "path": "/concepts/jd-health",
+          "name": "京东健康有限公司",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:20.047018+00:00"
+        },
+        {
+          "id": "2bfea0df-1d66-4bc4-8c9d-1a3f92b1715d",
+          "path": "/concepts/jd-health-app",
+          "name": "京东健康APP",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T06:01:38.803401+00:00"
+        },
+        {
+          "id": "a943705b-d5b3-4b22-be24-735231acf4ca",
+          "path": "/work/projects/sleep-device-integration-jd-health-app-project",
+          "name": "睡眠设备接入京东健康APP项目",
+          "fact_count": 1,
+          "facts": [
+            "睡眠设备接入京东健康APP项目没有标注具体的年份信息。"
+          ],
+          "created_at": "2026-02-14T06:01:38.365087+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "bf418c57-1f47-4216-8dfb-f5c31ff467d6",
+        "path": "/work/projects/sleep-device-jd-health-app-integration",
+        "name": "睡眠设备接入京东健康APP",
+        "fact_count": 1,
+        "facts": [
+          "睡眠设备接入京东健康APP是李俊杰在医疗领域做过的数据联通项目。"
+        ],
+        "created_at": "2026-02-14T03:49:17.937785+00:00"
+      },
+      "total_facts": 2,
+      "merge_strategy": "以 '/work/projects/sleep-device-jd-health-app-integration' 为主实体，迁移其他 3 个实体的 1 条事实",
+      "risks": [
+        "实体数量较多，建议分批合并"
+      ]
+    },
+    {
+      "group_id": 10,
+      "entities": [
+        {
+          "id": "2a73303c-a28b-4936-b2db-b284c6825a3c",
+          "path": "/files/jian-li-li-jun-jie.pdf",
+          "name": "简历-李俊杰.pdf",
+          "fact_count": 4,
+          "facts": [
+            "文件 '简历-李俊杰.pdf' 是由 李俊杰 上传的。",
+            "文件 '简历-李俊杰.pdf' 的 MIME 类型是 'application/pdf'。",
+            "文件 '简历-李俊杰.pdf' 的原始名称是 '简历-李俊杰.pdf'。",
+            "文件 '简历-李俊杰.pdf' 的本地路径是 'D:\\memo\\uploads\\5cd91724.pdf'。"
+          ],
+          "created_at": "2026-02-14T03:26:16.890005+00:00"
+        },
+        {
+          "id": "b079acf3-5594-4822-9333-3bbbbf68aa8b",
+          "path": "/file/resume-li-jun-jie.pdf",
+          "name": "简历-李俊杰.pdf",
+          "fact_count": 1,
+          "facts": [
+            "文件'简历-李俊杰.pdf'是李俊杰的简历。"
+          ],
+          "created_at": "2026-02-14T03:49:26.9348+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "2a73303c-a28b-4936-b2db-b284c6825a3c",
+        "path": "/files/jian-li-li-jun-jie.pdf",
+        "name": "简历-李俊杰.pdf",
+        "fact_count": 4,
+        "facts": [
+          "文件 '简历-李俊杰.pdf' 是由 李俊杰 上传的。",
+          "文件 '简历-李俊杰.pdf' 的 MIME 类型是 'application/pdf'。",
+          "文件 '简历-李俊杰.pdf' 的原始名称是 '简历-李俊杰.pdf'。",
+          "文件 '简历-李俊杰.pdf' 的本地路径是 'D:\\memo\\uploads\\5cd91724.pdf'。"
+        ],
+        "created_at": "2026-02-14T03:26:16.890005+00:00"
+      },
+      "total_facts": 5,
+      "merge_strategy": "以 '/files/jian-li-li-jun-jie.pdf' 为主实体，迁移其他 1 个实体的 1 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 11,
+      "entities": [
+        {
+          "id": "2c88c906-76cf-4c5a-90eb-ed2d18c3435f",
+          "path": "/work/projects/bot-energy-station-project",
+          "name": "能源站BOT项目",
+          "fact_count": 3,
+          "facts": [
+            "能源站BOT项目记录处于“待编译”状态。",
+            "能源站BOT项目尚未编译完成详细信息。",
+            "能源站BOT项目没有明确的时间标记指向2016年。"
+          ],
+          "created_at": "2026-02-14T03:49:18.410591+00:00"
+        },
+        {
+          "id": "19af09ea-6e9e-46b3-87ae-7c095979de89",
+          "path": "/work/projects/energy-station-bot-project",
+          "name": "能源站BOT项目",
+          "fact_count": 1,
+          "facts": [
+            "能源站BOT项目档案中没有明确的时间标记指向2016年。"
+          ],
+          "created_at": "2026-02-14T06:01:38.145244+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "2c88c906-76cf-4c5a-90eb-ed2d18c3435f",
+        "path": "/work/projects/bot-energy-station-project",
+        "name": "能源站BOT项目",
+        "fact_count": 3,
+        "facts": [
+          "能源站BOT项目记录处于“待编译”状态。",
+          "能源站BOT项目尚未编译完成详细信息。",
+          "能源站BOT项目没有明确的时间标记指向2016年。"
+        ],
+        "created_at": "2026-02-14T03:49:18.410591+00:00"
+      },
+      "total_facts": 4,
+      "merge_strategy": "以 '/work/projects/bot-energy-station-project' 为主实体，迁移其他 1 个实体的 1 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 12,
+      "entities": [
+        {
+          "id": "309d2817-9e07-470e-b7ec-9a3b2a8f9761",
+          "path": "/concepts/file-system-metaphor-interface-definition",
+          "name": "文件系统隐喻的接口定义",
+          "fact_count": 1,
+          "facts": [
+            "文件系统隐喻的接口定义是 MemOS v2.0 可能涉及的一个方面。"
+          ],
+          "created_at": "2026-02-14T03:26:17.527791+00:00"
+        },
+        {
+          "id": "8444d8f3-ee05-4461-80fc-61db1d3651ff",
+          "path": "/concepts/file-system-metaphor-architecture",
+          "name": "文件系统隐喻架构",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:21.022708+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "309d2817-9e07-470e-b7ec-9a3b2a8f9761",
+        "path": "/concepts/file-system-metaphor-interface-definition",
+        "name": "文件系统隐喻的接口定义",
+        "fact_count": 1,
+        "facts": [
+          "文件系统隐喻的接口定义是 MemOS v2.0 可能涉及的一个方面。"
+        ],
+        "created_at": "2026-02-14T03:26:17.527791+00:00"
+      },
+      "total_facts": 1,
+      "merge_strategy": "以 '/concepts/file-system-metaphor-interface-definition' 为主实体，迁移其他 1 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 13,
+      "entities": [
+        {
+          "id": "4d97113e-e04f-460a-a304-144eea749130",
+          "path": "/concepts/jinyue-restaurant",
+          "name": "金悦餐厅",
+          "fact_count": 5,
+          "facts": [
+            "2026年2月13日晚上，有5人在金悦餐厅聚餐。",
+            "金悦餐厅位于公司旁边。",
+            "2026年2月13日晚的聚餐是一次跨部门的小型聚会。",
+            "聚餐地点是金悦餐厅。",
+            "金悦餐厅位于公司旁边。"
+          ],
+          "created_at": "2026-02-16T06:43:17.636311+00:00"
+        },
+        {
+          "id": "a52b7150-f7ca-4f23-8835-967cfa170b1c",
+          "path": "/life/restaurants/jinyue-restaurant",
+          "name": "金悦餐厅",
+          "fact_count": 1,
+          "facts": [
+            "2月13日，有5人在金悦餐厅聚餐。"
+          ],
+          "created_at": "2026-02-16T05:45:52.815008+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "4d97113e-e04f-460a-a304-144eea749130",
+        "path": "/concepts/jinyue-restaurant",
+        "name": "金悦餐厅",
+        "fact_count": 5,
+        "facts": [
+          "2026年2月13日晚上，有5人在金悦餐厅聚餐。",
+          "金悦餐厅位于公司旁边。",
+          "2026年2月13日晚的聚餐是一次跨部门的小型聚会。",
+          "聚餐地点是金悦餐厅。",
+          "金悦餐厅位于公司旁边。"
+        ],
+        "created_at": "2026-02-16T06:43:17.636311+00:00"
+      },
+      "total_facts": 6,
+      "merge_strategy": "以 '/concepts/jinyue-restaurant' 为主实体，迁移其他 1 个实体的 1 条事实",
+      "risks": [
+        "存在重复事实，合并后会自动去重"
+      ]
+    },
+    {
+      "group_id": 14,
+      "entities": [
+        {
+          "id": "044e9daf-2e92-4ae7-be05-65482acd1697",
+          "path": "/concepts/financial-practitioner-qualification",
+          "name": "金融从业资格",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:19.167578+00:00"
+        },
+        {
+          "id": "585d92c9-8b71-4a0a-a472-6cd93ed773f8",
+          "path": "/concepts/securities-practitioner-qualification",
+          "name": "证券从业资格",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:19.386192+00:00"
+        },
+        {
+          "id": "32eba293-abfd-4f0f-b212-1d143d76f234",
+          "path": "/concepts/fund-practitioner-qualification",
+          "name": "基金从业资格",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:19.605345+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "32eba293-abfd-4f0f-b212-1d143d76f234",
+        "path": "/concepts/fund-practitioner-qualification",
+        "name": "基金从业资格",
+        "fact_count": 0,
+        "facts": [],
+        "created_at": "2026-02-14T03:49:19.605345+00:00"
+      },
+      "total_facts": 0,
+      "merge_strategy": "以 '/concepts/fund-practitioner-qualification' 为主实体，迁移其他 2 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 15,
+      "entities": [
+        {
+          "id": "c05d907c-a2ad-46c5-8640-1db90daaf3ff",
+          "path": "/concepts/hna-group",
+          "name": "海航集团有限公司",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T03:49:20.703231+00:00"
+        },
+        {
+          "id": "b32ff375-914c-43eb-a7e5-e6e4ec6041dc",
+          "path": "/concepts/hna-group-co-ltd",
+          "name": "海航集团有限公司",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T06:01:38.578808+00:00"
+        },
+        {
+          "id": "3df8d5eb-013b-4d55-a31c-4678b7851657",
+          "path": "/concepts/hai-hang-group-co-ltd",
+          "name": "海航集团有限公司",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-14T07:45:02.571685+00:00"
+        },
+        {
+          "id": "fc04191c-e13d-42a0-90ab-1b47bc82f966",
+          "path": "/work/projects/hna-group-co-ltd",
+          "name": "海航集团有限公司",
+          "fact_count": 1,
+          "facts": [
+            "用户于2010年9月至2018年9月在海航集团有限公司工作。"
+          ],
+          "created_at": "2026-02-14T07:34:47.025572+00:00"
+        },
+        {
+          "id": "7d826ba5-37f5-4e37-9c6c-46af7cb9b614",
+          "path": "/concepts/hai-hang-ji-tuan-you-xian-gong-si",
+          "name": "海航集团有限公司",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-16T02:15:33.198697+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "fc04191c-e13d-42a0-90ab-1b47bc82f966",
+        "path": "/work/projects/hna-group-co-ltd",
+        "name": "海航集团有限公司",
+        "fact_count": 1,
+        "facts": [
+          "用户于2010年9月至2018年9月在海航集团有限公司工作。"
+        ],
+        "created_at": "2026-02-14T07:34:47.025572+00:00"
+      },
+      "total_facts": 1,
+      "merge_strategy": "以 '/work/projects/hna-group-co-ltd' 为主实体，迁移其他 4 个实体的 0 条事实",
+      "risks": [
+        "实体数量较多，建议分批合并"
+      ]
+    },
+    {
+      "group_id": 16,
+      "entities": [
+        {
+          "id": "4e813d4e-c0d7-4514-b58d-8cefc2b94648",
+          "path": "/people/li-jun-jie",
+          "name": "李俊杰",
+          "fact_count": 46,
+          "facts": [
+            "AI 想了解 李俊杰 的更多信息。",
+            "AI 建议 李俊杰 发送简历。",
+            "李俊杰 上传了文件。",
+            "李俊杰正在主导MemOS v2.0项目。",
+            "李俊杰的本科专业是生物技术（制药方向）。"
+          ],
+          "created_at": "2026-02-14T03:26:14.025042+00:00"
+        },
+        {
+          "id": "ca939969-3718-4b17-ab51-dc0d10ab78c5",
+          "path": "/people/li-junjie",
+          "name": "李俊杰",
+          "fact_count": 6,
+          "facts": [
+            "李俊杰是对话的用户。",
+            "李俊杰的昵称是“铁蛋”。",
+            "李俊杰正在主导MemOS v2.0项目。",
+            "李俊杰的人物档案处于“待编译”状态。",
+            "关于李俊杰的大学教育背景信息是空白的。"
+          ],
+          "created_at": "2026-02-14T03:36:58.011008+00:00"
+        },
+        {
+          "id": "48f04fa4-58d1-4e94-923f-a1b5d96bfd75",
+          "path": "/people/jun-jie",
+          "name": "俊杰",
+          "fact_count": 11,
+          "facts": [
+            "俊杰出生于1987年。",
+            "俊杰是资深北京居民。",
+            "俊杰曾在南阳路二小就读。",
+            "俊杰曾在31中就读。",
+            "俊杰曾在郑州七高就读。"
+          ],
+          "created_at": "2026-02-13T09:40:31.427653+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "4e813d4e-c0d7-4514-b58d-8cefc2b94648",
+        "path": "/people/li-jun-jie",
+        "name": "李俊杰",
+        "fact_count": 46,
+        "facts": [
+          "AI 想了解 李俊杰 的更多信息。",
+          "AI 建议 李俊杰 发送简历。",
+          "李俊杰 上传了文件。",
+          "李俊杰正在主导MemOS v2.0项目。",
+          "李俊杰的本科专业是生物技术（制药方向）。"
+        ],
+        "created_at": "2026-02-14T03:26:14.025042+00:00"
+      },
+      "total_facts": 63,
+      "merge_strategy": "以 '/people/li-jun-jie' 为主实体，迁移其他 2 个实体的 17 条事实",
+      "risks": [
+        "存在重复事实，合并后会自动去重"
+      ]
+    },
+    {
+      "group_id": 17,
+      "entities": [
+        {
+          "id": "9a6338d9-476d-46ae-86d5-71645bb58e1c",
+          "path": "/people/user-father",
+          "name": "用户父亲",
+          "fact_count": 2,
+          "facts": [
+            "AI不知道用户父亲的生日。",
+            "没有记录其生日信息。"
+          ],
+          "created_at": "2026-02-14T07:34:47.243783+00:00"
+        },
+        {
+          "id": "169f34e8-c551-48b4-a32d-c589087e1f88",
+          "path": "/people/father",
+          "name": "父亲",
+          "fact_count": 1,
+          "facts": [
+            "AI没有记录用户父亲的生日。"
+          ],
+          "created_at": "2026-02-16T05:45:54.88592+00:00"
+        },
+        {
+          "id": "68bae4b0-aeab-46c7-9431-fe90083ded2d",
+          "path": "/people/user-mother",
+          "name": "用户母亲",
+          "fact_count": 1,
+          "facts": [
+            "生日是4月6日"
+          ],
+          "created_at": "2026-02-16T06:43:16.848908+00:00"
+        },
+        {
+          "id": "79717466-880a-4de8-9e61-2127edd8dea1",
+          "path": "/people/user",
+          "name": "用户",
+          "fact_count": 11,
+          "facts": [
+            "用户曾就读于河南工业大学。",
+            "AI希望记录用户的职业时间线。",
+            "用户在海航集团有限公司的工作经历从2010年9月持续到2018年9月。",
+            "用户在海航集团有限公司担任高级投资经理/董事的职位。",
+            "用户在海航集团有限公司工作期间积累了医疗与金融复合背景。"
+          ],
+          "created_at": "2026-02-14T04:56:52.445488+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "79717466-880a-4de8-9e61-2127edd8dea1",
+        "path": "/people/user",
+        "name": "用户",
+        "fact_count": 11,
+        "facts": [
+          "用户曾就读于河南工业大学。",
+          "AI希望记录用户的职业时间线。",
+          "用户在海航集团有限公司的工作经历从2010年9月持续到2018年9月。",
+          "用户在海航集团有限公司担任高级投资经理/董事的职位。",
+          "用户在海航集团有限公司工作期间积累了医疗与金融复合背景。"
+        ],
+        "created_at": "2026-02-14T04:56:52.445488+00:00"
+      },
+      "total_facts": 15,
+      "merge_strategy": "以 '/people/user' 为主实体，迁移其他 3 个实体的 4 条事实",
+      "risks": [
+        "实体数量较多，建议分批合并"
+      ]
+    },
+    {
+      "group_id": 18,
+      "entities": [
+        {
+          "id": "77e4c4ed-97f3-4fd8-b24c-8a85470ae350",
+          "path": "/concepts/integrated-management-department",
+          "name": "综管部",
+          "fact_count": 0,
+          "facts": [],
+          "created_at": "2026-02-16T05:45:54.437097+00:00"
+        },
+        {
+          "id": "895803ab-6bb1-47b4-a9a2-454963b9cbb2",
+          "path": "/concepts/general-management-department",
+          "name": "综管部",
+          "fact_count": 1,
+          "facts": [
+            "晓宽是综管部成员。"
+          ],
+          "created_at": "2026-02-16T06:53:42.820003+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "895803ab-6bb1-47b4-a9a2-454963b9cbb2",
+        "path": "/concepts/general-management-department",
+        "name": "综管部",
+        "fact_count": 1,
+        "facts": [
+          "晓宽是综管部成员。"
+        ],
+        "created_at": "2026-02-16T06:53:42.820003+00:00"
+      },
+      "total_facts": 1,
+      "merge_strategy": "以 '/concepts/general-management-department' 为主实体，迁移其他 1 个实体的 0 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 19,
+      "entities": [
+        {
+          "id": "357b7db6-2a7a-46de-8c56-19599ea8932b",
+          "path": "/concepts/tsingtao-beer",
+          "name": "青岛啤酒",
+          "fact_count": 3,
+          "facts": [
+            "该青岛啤酒被认为是收藏级或限定版。",
+            "该青岛啤酒很特别/少见。",
+            "限量版青岛啤酒价值1399元。"
+          ],
+          "created_at": "2026-02-16T05:45:54.678639+00:00"
+        },
+        {
+          "id": "8a7ffadb-c915-49e2-b191-2d7d666f94fd",
+          "path": "/concepts/limited-edition-tsingtao-beer",
+          "name": "限量版青岛啤酒",
+          "fact_count": 3,
+          "facts": [
+            "限量版青岛啤酒售价1399元。",
+            "限量版青岛啤酒被认为是罕见的。",
+            "限量版青岛啤酒可能因年份、酿造工艺或包装设计而有特别之处。"
+          ],
+          "created_at": "2026-02-16T06:53:43.047321+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "357b7db6-2a7a-46de-8c56-19599ea8932b",
+        "path": "/concepts/tsingtao-beer",
+        "name": "青岛啤酒",
+        "fact_count": 3,
+        "facts": [
+          "该青岛啤酒被认为是收藏级或限定版。",
+          "该青岛啤酒很特别/少见。",
+          "限量版青岛啤酒价值1399元。"
+        ],
+        "created_at": "2026-02-16T05:45:54.678639+00:00"
+      },
+      "total_facts": 6,
+      "merge_strategy": "以 '/concepts/tsingtao-beer' 为主实体，迁移其他 1 个实体的 3 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 20,
+      "entities": [
+        {
+          "id": "fc4a9b66-8a5b-4a3f-aac2-e35538038106",
+          "path": "/people/yang-yong",
+          "name": "杨勇",
+          "fact_count": 2,
+          "facts": [
+            "杨勇参加了2月13日在金悦餐厅的聚餐。",
+            "杨勇来自用户所在的部门。"
+          ],
+          "created_at": "2026-02-16T05:45:53.120866+00:00"
+        },
+        {
+          "id": "fd4360c4-1d61-4726-9613-e0367682c907",
+          "path": "/people/yang-yong-zong",
+          "name": "杨勇总",
+          "fact_count": 4,
+          "facts": [
+            "杨勇总参加了2026年2月13日晚在金悦餐厅的聚餐。",
+            "杨勇总参加了部门聚餐。",
+            "杨勇总来自用户部门。",
+            "杨勇总在聚餐时带了一瓶限量版青岛啤酒。"
+          ],
+          "created_at": "2026-02-16T06:53:41.977102+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "fd4360c4-1d61-4726-9613-e0367682c907",
+        "path": "/people/yang-yong-zong",
+        "name": "杨勇总",
+        "fact_count": 4,
+        "facts": [
+          "杨勇总参加了2026年2月13日晚在金悦餐厅的聚餐。",
+          "杨勇总参加了部门聚餐。",
+          "杨勇总来自用户部门。",
+          "杨勇总在聚餐时带了一瓶限量版青岛啤酒。"
+        ],
+        "created_at": "2026-02-16T06:53:41.977102+00:00"
+      },
+      "total_facts": 6,
+      "merge_strategy": "以 '/people/yang-yong-zong' 为主实体，迁移其他 1 个实体的 2 条事实",
+      "risks": []
+    },
+    {
+      "group_id": 21,
+      "entities": [
+        {
+          "id": "10adc19b-3521-4cd0-967b-a5bac68bac0d",
+          "path": "/people/yang-guangyao",
+          "name": "杨光曜",
+          "fact_count": 4,
+          "facts": [
+            "杨光曜参加了2月13日在金悦餐厅的聚餐。",
+            "杨光曜来自用户所在的部门。",
+            "杨光曜参加了2026年2月13日晚在金悦餐厅的聚餐。",
+            "杨光曜来自用户所在的部门。"
+          ],
+          "created_at": "2026-02-16T05:45:53.388689+00:00"
+        },
+        {
+          "id": "304e1b7a-73ba-4355-91d5-fd5334cbcc31",
+          "path": "/people/yang-guang-yao",
+          "name": "杨光曜",
+          "fact_count": 2,
+          "facts": [
+            "杨光曜参加了部门聚餐。",
+            "杨光曜来自用户部门。"
+          ],
+          "created_at": "2026-02-16T07:01:14.901756+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "10adc19b-3521-4cd0-967b-a5bac68bac0d",
+        "path": "/people/yang-guangyao",
+        "name": "杨光曜",
+        "fact_count": 4,
+        "facts": [
+          "杨光曜参加了2月13日在金悦餐厅的聚餐。",
+          "杨光曜来自用户所在的部门。",
+          "杨光曜参加了2026年2月13日晚在金悦餐厅的聚餐。",
+          "杨光曜来自用户所在的部门。"
+        ],
+        "created_at": "2026-02-16T05:45:53.388689+00:00"
+      },
+      "total_facts": 6,
+      "merge_strategy": "以 '/people/yang-guangyao' 为主实体，迁移其他 1 个实体的 2 条事实",
+      "risks": [
+        "存在重复事实，合并后会自动去重"
+      ]
+    },
+    {
+      "group_id": 22,
+      "entities": [
+        {
+          "id": "772b0e62-d305-41fa-a0dd-754a625702ca",
+          "path": "/people/wo-ma",
+          "name": "我妈",
+          "fact_count": 1,
+          "facts": [
+            "生日是4月6日"
+          ],
+          "created_at": "2026-02-16T07:14:12.556149+00:00"
+        },
+        {
+          "id": "42b9f602-6b61-4dd0-bcf3-837bbf5b0c35",
+          "path": "/people/wo-ba",
+          "name": "我爸",
+          "fact_count": 1,
+          "facts": [
+            "生日是3月20日"
+          ],
+          "created_at": "2026-02-16T07:14:12.274129+00:00"
+        }
+      ],
+      "suggested_primary": {
+        "id": "42b9f602-6b61-4dd0-bcf3-837bbf5b0c35",
+        "path": "/people/wo-ba",
+        "name": "我爸",
+        "fact_count": 1,
+        "facts": [
+          "生日是3月20日"
+        ],
+        "created_at": "2026-02-16T07:14:12.274129+00:00"
+      },
+      "total_facts": 2,
+      "merge_strategy": "以 '/people/wo-ba' 为主实体，迁移其他 1 个实体的 1 条事实",
+      "risks": []
+    }
+  ]
+}

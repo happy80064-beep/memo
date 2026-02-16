@@ -9,7 +9,7 @@
       "env": {
         "SYSTEM_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "SYSTEM_API_KEY": "${SYSTEM_API_KEY}",
-        "SYSTEM_MODEL": "gemini-2.5-flash",
+        "SYSTEM_MODEL": "gemini-2.5-flash-preview",
         "SYSTEM_TEMPERATURE": "0.3",
         "SUPABASE_URL": "${SUPABASE_URL}",
         "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
@@ -23,7 +23,7 @@
       "env": {
         "SYSTEM_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "SYSTEM_API_KEY": "${SYSTEM_API_KEY}",
-        "SYSTEM_MODEL": "gemini-2.5-flash",
+        "SYSTEM_MODEL": "gemini-2.5-flash-preview",
         "SYSTEM_TEMPERATURE": "0.3",
         "SUPABASE_URL": "${SUPABASE_URL}",
         "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"

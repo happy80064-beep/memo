@@ -14,7 +14,7 @@ print("=" * 60)
 # 获取环境变量
 api_key = os.getenv("SYSTEM_API_KEY", "")
 base_url = os.getenv("SYSTEM_BASE_URL", "")
-model = os.getenv("SYSTEM_MODEL", "gemini-2.5-flash")
+model = os.getenv("SYSTEM_MODEL", "gemini-2.5-flash-preview")
 
 print(f"\n1. 环境变量检查:")
 print(f"   SYSTEM_API_KEY: {'✓ 已设置' if api_key else '✗ 未设置'}")

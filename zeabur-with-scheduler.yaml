@@ -12,7 +12,7 @@ services:
       - key: "SYSTEM_BASE_URL"
         value: "https://generativelanguage.googleapis.com/v1beta/openai/"
       - key: "SYSTEM_MODEL"
-        value: "gemini-2.5-flash"
+        value: "gemini-2.5-flash-preview"
       - key: "SYSTEM_TEMPERATURE"
         value: "0.3"
       - key: "USER_BASE_URL"
@@ -47,7 +47,7 @@ services:
         value: "https://generativelanguage.googleapis.com/v1beta/openai/"
       - key: "SYSTEM_API_KEY"
       - key: "SYSTEM_MODEL"
-        value: "gemini-2.5-flash"
+        value: "gemini-2.5-flash-preview"
       - key: "SUPABASE_URL"
       - key: "SUPABASE_SERVICE_ROLE_KEY"
 
@@ -61,7 +61,7 @@ services:
         value: "https://generativelanguage.googleapis.com/v1beta/openai/"
       - key: "SYSTEM_API_KEY"
       - key: "SYSTEM_MODEL"
-        value: "gemini-2.5-flash"
+        value: "gemini-2.5-flash-preview"
       - key: "SUPABASE_URL"
       - key: "SUPABASE_SERVICE_ROLE_KEY"
 

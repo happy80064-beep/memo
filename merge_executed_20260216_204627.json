@@ -1,0 +1,90 @@
+{
+  "executed_at": "2026-02-16T12:46:27.003706",
+  "merges": [
+    {
+      "status": "executed",
+      "primary_entity": "/people/li-guodong",
+      "timestamp": "2026-02-16T12:46:11.329529",
+      "migrations": [
+        {
+          "from_path": "/people/li-guo-dong",
+          "from_id": "95702181-738f-4fd7-b991-fb4da2d94092",
+          "facts_migrated": 1,
+          "facts_skipped": 0,
+          "details": []
+        },
+        {
+          "from_path": "/people/李国栋",
+          "from_id": "cbc04082-f317-4e84-b6a4-1b2ef66e27ef",
+          "facts_migrated": 3,
+          "facts_skipped": 0,
+          "details": []
+        }
+      ],
+      "errors": [
+        "标记实体失败 /people/li-guo-dong: {'message': \"Could not find the 'merged_into' column of 'mem_l3_entities' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}",
+        "标记实体失败 /people/李国栋: {'message': \"Could not find the 'merged_into' column of 'mem_l3_entities' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}"
+      ],
+      "primary_facts_before": 7
+    },
+    {
+      "status": "executed",
+      "primary_entity": "/people/user-father",
+      "timestamp": "2026-02-16T12:46:15.820639",
+      "migrations": [
+        {
+          "from_path": "/people/father",
+          "from_id": "169f34e8-c551-48b4-a32d-c589087e1f88",
+          "facts_migrated": 1,
+          "facts_skipped": 0,
+          "details": []
+        },
+        {
+          "from_path": "/people/wo-ba",
+          "from_id": "42b9f602-6b61-4dd0-bcf3-837bbf5b0c35",
+          "facts_migrated": 1,
+          "facts_skipped": 0,
+          "details": []
+        }
+      ],
+      "errors": [
+        "标记实体失败 /people/father: {'message': \"Could not find the 'merged_into' column of 'mem_l3_entities' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}",
+        "标记实体失败 /people/wo-ba: {'message': \"Could not find the 'merged_into' column of 'mem_l3_entities' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}"
+      ],
+      "primary_facts_before": 2
+    },
+    {
+      "status": "executed",
+      "primary_entity": "/people/li-jun-jie",
+      "timestamp": "2026-02-16T12:46:19.129483",
+      "migrations": [
+        {
+          "from_path": "/people/li-junjie",
+          "from_id": "ca939969-3718-4b17-ab51-dc0d10ab78c5",
+          "facts_migrated": 5,
+          "facts_skipped": 1,
+          "details": [
+            {
+              "fact_id": "2334487a-6656-46ee-8364-2bac864e9d53",
+              "content": "李俊杰正在主导MemOS v2.0项目。",
+              "action": "skipped",
+              "reason": "duplicate"
+            }
+          ]
+        },
+        {
+          "from_path": "/people/jun-jie",
+          "from_id": "48f04fa4-58d1-4e94-923f-a1b5d96bfd75",
+          "facts_migrated": 11,
+          "facts_skipped": 0,
+          "details": []
+        }
+      ],
+      "errors": [
+        "标记实体失败 /people/li-junjie: {'message': \"Could not find the 'merged_into' column of 'mem_l3_entities' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}",
+        "标记实体失败 /people/jun-jie: {'message': \"Could not find the 'merged_into' column of 'mem_l3_entities' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}"
+      ],
+      "primary_facts_before": 46
+    }
+  ]
+}
