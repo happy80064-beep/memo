@@ -1381,9 +1381,13 @@ class MemOSGraph:
         if needs_retrieval and retrieved:
             for e in retrieved[:3]:  # 只取前3个最相关的
                 matched_fact = e.get("matched_fact", "")
+                entity_name = e.get("name", "")
                 if matched_fact:
                     # 清理 matched_fact 中的标记，保留完整事实内容
                     clean_fact = matched_fact.replace("[相关事实] ", "")
+                    # 如果事实不包含实体名称，添加前缀使其完整（谁的+什么）
+                    if entity_name and entity_name not in clean_fact:
+                        clean_fact = f"{entity_name}: {clean_fact}"
                     retrieved_facts.append(clean_fact)
                     print(f"[SYS_PROMPT] Added fact: {clean_fact[:50]}")
 
