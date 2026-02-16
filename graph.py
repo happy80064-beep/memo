@@ -400,33 +400,49 @@ class MemOSGraph:
 
         except Exception as e:
             print(f"[WARN] 认知推理失败: {e}, 使用默认推断")
-            # 简单回退
-            if session_history and len(user_input) < 20:
-                last_intent = session_history[-1].get("intent", "CASUAL")
-                return {
-                    "intent": last_intent if last_intent != "CASUAL" else "PERSONAL_QUERY",
-                    "is_follow_up": True,
-                    "reasoning_summary": "基于简写推断为跟进问题",
-                    "dimensions_used": ["context_fallback"],
-                    "search_strategy": {
-                        "primary_keywords": [user_input[:10]],
-                        "time_expansion": False,
-                        "entity_expansion": [],
-                        "relation_depth": 1,
-                        "priority_paths": ["/people/", "/work/"]
-                    }
-                }
+
+            # 基于关键词的简单推断（降级方案）
+            query_lower = user_input.lower()
+
+            # 判断是否为个人查询
+            personal_keywords = ['爸', '妈', '父', '母', '生日', '年龄', '家人', '家庭', '我', '我的']
+            work_keywords = ['工作', '公司', '职位', '职业', '项目', '技术']
+
+            is_personal = any(kw in query_lower for kw in personal_keywords)
+            is_work = any(kw in query_lower for kw in work_keywords)
+
+            if is_personal:
+                fallback_intent = "PERSONAL_QUERY"
+                priority_paths = ["/people/"]
+            elif is_work:
+                fallback_intent = "WORK_QUERY"
+                priority_paths = ["/work/", "/projects/"]
+            elif session_history and len(user_input) < 20:
+                # 可能是跟进问题
+                fallback_intent = "PERSONAL_QUERY"
+                priority_paths = ["/people/", "/work/"]
+            else:
+                fallback_intent = "CASUAL"
+                priority_paths = []
+
+            # 提取简单关键词
+            keywords = [kw for kw in personal_keywords + work_keywords if kw in query_lower]
+            if not keywords:
+                keywords = [user_input[:10]]
+
+            print(f"[WARN] 降级推断: intent={fallback_intent}, keywords={keywords}")
 
             return {
-                "intent": "CASUAL",
+                "intent": fallback_intent,
                 "is_follow_up": False,
-                "reasoning_summary": "无法确定意图，默认为闲聊",
-                "dimensions_used": [],
+                "reasoning_summary": f"认知推理失败，基于关键词推断为{fallback_intent}",
+                "dimensions_used": ["keyword_fallback"],
                 "search_strategy": {
-                    "primary_keywords": [],
-                    "time_expansion": False,
+                    "primary_keywords": keywords,
+                    "time_expansion": "生日" in query_lower or "年" in query_lower,
                     "entity_expansion": [],
-                    "relation_depth": 1,
+                    "relation_depth": 2,
+                    "priority_paths": priority_paths
                     "priority_paths": []
                 }
             }
