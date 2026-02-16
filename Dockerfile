@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir \
     pydantic>=2.0.0 \
     PyPDF2>=3.0.0 \
     python-docx>=1.1.0 \
+    python-multipart>=0.0.6 \
     langgraph>=0.2.0
 
 # 复制应用代码
