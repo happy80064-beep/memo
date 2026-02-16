@@ -813,21 +813,6 @@ class MemOSGraph:
             path_results = await self._search_by_path_patterns(path_keywords)
             all_results.extend([{**r, '_source': 'path', '_score': 3} for r in path_results])
 
-        # 策略 2: 名称/描述内容搜索
-        if content_keywords:
-            content_results = await self._search_by_content(content_keywords)
-            all_results.extend([{**r, '_source': 'content', '_score': 2} for r in content_results])
-
-        # 策略 1: 路径模式搜索（改进版）
-        if path_keywords:
-            path_results = await self._search_by_path_patterns(path_keywords)
-            all_results.extend([{**r, '_source': 'path', '_score': 3} for r in path_results])
-
-        # 策略 2: 名称/描述内容搜索
-        if content_keywords:
-            content_results = await self._search_by_content(content_keywords)
-            all_results.extend([{**r, '_source': 'content', '_score': 2} for r in content_results])
-
         # 策略 3: 原子事实搜索（关键！）
         # 使用语义关键词 + 内容关键词组合搜索，提高命中率
         search_keywords = list(set(content_keywords + semantic_keywords))
