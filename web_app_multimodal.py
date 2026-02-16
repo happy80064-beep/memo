@@ -686,6 +686,18 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+    import time
+
     port = int(os.getenv("PORT", 9001))  # Use 9001 to avoid conflict
-    print(f"Starting Multimodal Server on http://localhost:{port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print(f"Starting Multimodal Server on http://0.0.0.0:{port}")
+
+    # 添加启动延迟，给 Zeabur 健康检查留出时间
+    time.sleep(2)
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        access_log=True
+    )
