@@ -58,18 +58,11 @@ class LLMFactory:
     @classmethod
     def _create_llm(cls, config: LLMConfig) -> ChatOpenAI:
         """创建 ChatOpenAI 实例"""
-        # 确保 base_url 格式正确（Gemini 需要 /v1beta 或 /v1）
-        base_url = config.base_url.rstrip("/")
-        if not base_url.endswith(("/v1", "/v1beta")):
-            # Gemini OpenAI 兼容接口通常是 .../v1beta/openai/
-            # 但如果 URL 已经包含 openai，可能不需要再添加
-            if "openai" not in base_url:
-                base_url = f"{base_url}/v1beta/openai"
-
-        # 使用普通字符串而不是 SecretStr（某些版本的 langchain-openai 有问题）
+        # 直接使用配置，不做任何修改
+        # Gemini OpenAI 兼容接口: https://generativelanguage.googleapis.com/v1beta/openai/
         return ChatOpenAI(
-            base_url=base_url,
-            api_key=config.api_key,  # 直接使用字符串，不用 SecretStr
+            base_url=config.base_url,
+            api_key=config.api_key,
             model=config.model,
             temperature=config.temperature,
             max_tokens=config.max_tokens,
