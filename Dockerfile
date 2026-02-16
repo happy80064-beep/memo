@@ -28,5 +28,5 @@ COPY *.html .
 # 注意：.env 不复制，环境变量从 Zeabur 平台读取
 
 # 默认命令（调度器模式）
-# 在 Zeabur 控制台可以覆盖为：python web_app_multimodal.py
+# 在 Zeabur 控制台可以覆盖为：uvicorn web_app_multimodal:app --host 0.0.0.0 --port 8000
 CMD ["python", "zeabur-scheduler.py"]

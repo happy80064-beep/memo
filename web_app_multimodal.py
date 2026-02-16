@@ -687,17 +687,23 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     import time
+    import sys
 
-    port = int(os.getenv("PORT", 9001))  # Use 9001 to avoid conflict
-    print(f"Starting Multimodal Server on http://0.0.0.0:{port}")
+    port = int(os.getenv("PORT", 8000))
+    print(f"[STARTUP] Port: {port}", flush=True)
+    print(f"[STARTUP] Starting Multimodal Server on http://0.0.0.0:{port}", flush=True)
 
-    # 添加启动延迟，给 Zeabur 健康检查留出时间
-    time.sleep(2)
-
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        log_level="info",
-        access_log=True
-    )
+    try:
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            log_level="info",
+            access_log=True,
+            loop="asyncio"
+        )
+    except Exception as e:
+        print(f"[ERROR] Server crashed: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
