@@ -443,7 +443,6 @@ class MemOSGraph:
                     "entity_expansion": [],
                     "relation_depth": 2,
                     "priority_paths": priority_paths
-                    "priority_paths": []
                 }
             }
 
