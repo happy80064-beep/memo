@@ -195,13 +195,14 @@ class MemOSGraph:
                 else:
                     perception_parts.append(f"[附件 {i+1}]: {result}")
 
-            # 存入 L0 Buffer
-            self._save_to_l0_buffer(
-                role="user",
-                content=user_input,
-                attachments=attachments,
-                perception="\n".join(perception_parts)
-            )
+        # 存入 L0 Buffer - 所有用户输入（无论是否有附件）都要保存
+        print(f"[DEBUG] 正在保存user消息到L0: {user_input[:50]}...")
+        self._save_to_l0_buffer(
+            role="user",
+            content=user_input,
+            attachments=attachments,
+            perception="\n".join(perception_parts)
+        )
 
         # 构建增强输入
         enhanced_input = user_input
@@ -242,14 +243,18 @@ class MemOSGraph:
                 "source": "graph_input",
             }
 
-            self.supabase.table("mem_l0_buffer").insert({
+            print(f"[DEBUG] _save_to_l0_buffer: role={role}, content_len={len(content)}")
+            result = self.supabase.table("mem_l0_buffer").insert({
                 "role": role,
                 "content": content,
                 "meta_data": meta_data,
                 "processed": False,
             }).execute()
+            print(f"[DEBUG] L0保存成功: {result.data}")
         except Exception as e:
             print(f"[WARN] L0 Buffer 保存失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     # =========================================================================
     # Node 2: Cognitive Router v4 - 具备多维度推理能力
