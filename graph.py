@@ -734,7 +734,9 @@ class MemOSGraph:
             all_results.extend([{**r, '_source': 'content', '_score': 2} for r in content_results])
 
         # 策略 3: 原子事实搜索（关键！）
-        fact_results = await self._search_atomic_facts(query, content_keywords)
+        # 使用语义关键词 + 内容关键词组合搜索，提高命中率
+        search_keywords = list(set(content_keywords + semantic_keywords))
+        fact_results = await self._search_atomic_facts(query, search_keywords)
         all_results.extend([{**r, '_source': 'facts', '_score': 4} for r in fact_results])
 
         # 策略 4: 时间扩展搜索（新增！）
@@ -878,11 +880,13 @@ class MemOSGraph:
         results = []
 
         try:
-            # 构建关键词条件
-            if keywords:
+            # 策略1: 如果有有效关键词，用关键词搜索
+            valid_keywords = [kw for kw in keywords if len(kw) >= 2 and kw not in ['什么', '怎么', '为什么', '记得', '知道']]
+
+            if valid_keywords:
                 # 搜索包含关键词的事实
                 conditions = []
-                for kw in keywords[:3]:  # 限制关键词数量
+                for kw in valid_keywords[:5]:  # 增加关键词数量限制
                     conditions.append(f"content.ilike.%{kw}%")
 
                 # 使用 OR 连接多个条件
@@ -906,6 +910,40 @@ class MemOSGraph:
                                 "fact_entity_id": fact.get("entity_id")
                             }
                             results.append(enriched_entity)
+
+            # 策略2: 如果关键词搜索没结果，尝试提取查询中的核心名词进行模糊搜索
+            if not results:
+                # 提取查询中的关键名词（父亲、生日、公司等）
+                core_terms = []
+                if '父' in query or '爸' in query:
+                    core_terms.extend(['父亲', '爸爸', '爸'])
+                if '生日' in query or '生' in query:
+                    core_terms.append('生日')
+                if '母' in query or '妈' in query:
+                    core_terms.extend(['母亲', '妈妈', '妈'])
+
+                for term in core_terms:
+                    facts_result = self.supabase.table("mem_l3_atomic_facts") \
+                        .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                        .ilike("content", f"%{term}%") \
+                        .eq("status", "active") \
+                        .limit(5) \
+                        .execute()
+
+                    if facts_result.data:
+                        for fact in facts_result.data:
+                            entity = fact.get("mem_l3_entities", {})
+                            if entity:
+                                enriched_entity = {
+                                    **entity,
+                                    "matched_fact": fact.get("content", ""),
+                                    "fact_entity_id": fact.get("entity_id")
+                                }
+                                if not any(r.get('path') == enriched_entity.get('path') and
+                                          r.get('matched_fact') == enriched_entity.get('matched_fact')
+                                          for r in results):
+                                    results.append(enriched_entity)
+
         except Exception as e:
             print(f"[WARN] 原子事实搜索失败: {e}")
 
