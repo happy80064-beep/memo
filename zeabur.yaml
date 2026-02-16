@@ -1,34 +1,61 @@
-# Zeabur 调度器部署配置
-# 后台定时任务：提取器 + 编译器 + 生命周期管理
-# 不暴露 HTTP 端口，只运行后台任务
+# Zeabur 部署配置 - 方案A：统一 Dockerfile + 不同启动命令
+#
+# 使用说明：
+# 1. 在 Zeabur 创建两个服务，都使用同一个 GitHub 仓库
+# 2. 构建方式选择：Dockerfile（使用默认 Dockerfile）
+# 3. 在 "Start Command" 处设置不同的启动命令
+#
+# 服务1 - Web API：
+#   Start Command: python web_app_multimodal.py
+#   Port: 8000
+#
+# 服务2 - 调度器：
+#   Start Command: python zeabur-scheduler.py（或使用默认 CMD）
+#   Port: （不设置）
 
 version: "1.0"
 services:
-  memos-scheduler:
+  # 这个配置是参考，实际需要在 Zeabur 控制台手动创建两个服务
+  memos-web:
     type: "dockerfile"
-    dockerfile: "Dockerfile.zeabur"
-    # 注意：调度器不需要暴露端口
+    ports:
+      - "8000"
     env:
-      # 系统模型配置
       - key: "SYSTEM_BASE_URL"
         value: "https://generativelanguage.googleapis.com/v1beta/openai/"
       - key: "SYSTEM_MODEL"
         value: "gemini-2.5-flash"
       - key: "SYSTEM_TEMPERATURE"
         value: "0.3"
-
-      # 应用配置
+      - key: "USER_BASE_URL"
+        value: "https://api.moonshot.cn/v1"
+      - key: "USER_MODEL"
+        value: "kimi-k2-5"
+      - key: "USER_TEMPERATURE"
+        value: "0.7"
       - key: "APP_ENV"
         value: "production"
-      - key: "LOG_LEVEL"
-        value: "INFO"
+      - key: "PORT"
+        value: "8000"
+    resources:
+      memory: "512Mi"
+      cpu: "0.5"
 
-      # 调度配置
+  memos-scheduler:
+    type: "dockerfile"
+    env:
+      - key: "SYSTEM_BASE_URL"
+        value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+      - key: "SYSTEM_MODEL"
+        value: "gemini-2.5-flash"
+      - key: "SYSTEM_TEMPERATURE"
+        value: "0.3"
+      - key: "APP_ENV"
+        value: "production"
       - key: "SCHEDULE_EXTRACTOR_MINUTES"
         value: "10"
       - key: "SCHEDULE_COMPILER_MINUTES"
         value: "30"
-
     resources:
       memory: "512Mi"
       cpu: "0.5"
