@@ -270,7 +270,12 @@ async def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Root endpoint with multimodal HTML interface"""
-    return """
+    # 读取外部 chat.html 文件
+    try:
+        with open("chat.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return """
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>
