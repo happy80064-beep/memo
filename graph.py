@@ -1005,9 +1005,14 @@ class MemOSGraph:
                     .execute()
 
                 if facts_result.data:
+                    # 收集找到的实体ID
+                    found_entity_ids = set()
                     for fact in facts_result.data:
                         entity = fact.get("mem_l3_entities", {})
                         if entity:
+                            entity_id = entity.get('id')
+                            if entity_id:
+                                found_entity_ids.add(entity_id)
                             # 将事实内容附加到实体描述中
                             enriched_entity = {
                                 **entity,
@@ -1015,6 +1020,36 @@ class MemOSGraph:
                                 "fact_entity_id": fact.get("entity_id")
                             }
                             results.append(enriched_entity)
+
+                    # 关键修复：对于找到的每个实体，查询其所有active事实
+                    # 因为用户可能问"李国栋的生日"，但"生日是3月20日"这个事实不包含"李国栋"
+                    for entity_id in found_entity_ids:
+                        all_facts_result = self.supabase.table("mem_l3_atomic_facts") \
+                            .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                            .eq("entity_id", entity_id) \
+                            .eq("status", "active") \
+                            .limit(20) \
+                            .execute()
+
+                        if all_facts_result.data:
+                            for fact in all_facts_result.data:
+                                entity = fact.get("mem_l3_entities", {})
+                                if entity:
+                                    # 检查是否已存在（去重）
+                                    fact_content = fact.get("content", "")
+                                    already_exists = any(
+                                        r.get("path") == entity.get("path") and
+                                        r.get("matched_fact") == fact_content
+                                        for r in results
+                                    )
+                                    if not already_exists:
+                                        enriched_entity = {
+                                            **entity,
+                                            "matched_fact": fact_content,
+                                            "fact_entity_id": fact.get("entity_id")
+                                        }
+                                        results.append(enriched_entity)
+                                        print(f"[AtomicSearch] 补充实体 {entity.get('path')} 的事实: {fact_content[:50]}...")
 
             # 策略2: 如果关键词搜索没结果，尝试提取查询中的核心名词进行模糊搜索
             if not results:
