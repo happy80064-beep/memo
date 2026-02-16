@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir \
     langchain-openai>=0.2.0 \
     openai>=1.0.0 \
     fastapi>=0.100.0 \
-    uvicorn>=0.23.0 \
+    uvicorn>=0.30.0 \
     python-dotenv>=1.0.0 \
     requests>=2.31.0 \
     PyPDF2>=3.0.0 \
