@@ -686,6 +686,112 @@ async def root():
 
 
 # ============================================================================
+# Feishu Bot Integration
+# ============================================================================
+
+import json
+import hmac
+import hashlib
+import base64
+import httpx
+
+# 飞书配置
+FEISHU_APP_ID = os.getenv("FEISHU_APP_ID", "")
+FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
+FEISHU_VERIFICATION_TOKEN = os.getenv("FEISHU_VERIFICATION_TOKEN", "")
+FEISHU_ENCRYPT_KEY = os.getenv("FEISHU_ENCRYPT_KEY", "")
+FEISHU_BASE_URL = "https://open.feishu.cn/open-apis"
+
+_token_cache = {"token": None, "expire_at": 0}
+
+async def get_feishu_token() -> str:
+    """获取飞书tenant_access_token"""
+    global _token_cache
+    import time
+    now = time.time()
+    if _token_cache["token"] and _token_cache["expire_at"] > now + 60:
+        return _token_cache["token"]
+
+    url = f"{FEISHU_BASE_URL}/auth/v3/tenant_access_token/internal"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, json={
+            "app_id": FEISHU_APP_ID,
+            "app_secret": FEISHU_APP_SECRET
+        })
+        data = resp.json()
+        if data.get("code") == 0:
+            _token_cache["token"] = data["tenant_access_token"]
+            _token_cache["expire_at"] = now + data["expire"]
+            return _token_cache["token"]
+    return ""
+
+async def send_feishu_reply(chat_id: str, text: str):
+    """发送回复到飞书"""
+    if not FEISHU_APP_ID:
+        return
+    token = await get_feishu_token()
+    if not token:
+        return
+
+    url = f"{FEISHU_BASE_URL}/im/v1/messages"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    payload = {
+        "receive_id": chat_id,
+        "msg_type": "text",
+        "content": json.dumps({"text": text})
+    }
+
+    async with httpx.AsyncClient() as client:
+        await client.post(url, headers=headers, params={"receive_id_type": "chat_id"}, json=payload)
+
+@app.post("/feishu/webhook")
+async def feishu_webhook(request: Request):
+    """飞书事件回调"""
+    body = await request.body()
+    data = json.loads(body.decode('utf-8'))
+
+    # URL验证
+    if data.get("type") == "url_verification":
+        return {"challenge": data.get("challenge")}
+
+    # Token验证
+    if FEISHU_VERIFICATION_TOKEN and data.get("token") != FEISHU_VERIFICATION_TOKEN:
+        raise HTTPException(status_code=401)
+
+    # 处理消息事件
+    event_type = data.get("header", {}).get("event_type")
+    if event_type == "im.message.receive_v1":
+        event = data.get("event", {})
+        message = event.get("message", {})
+        chat_type = message.get("chat_type")
+        chat_id = message.get("chat_id")
+
+        # 解析消息内容
+        content = json.loads(message.get("content", "{}"))
+        text = content.get("text", "")
+
+        # 生成session_id
+        sender = event.get("sender", {}).get("sender_id", {})
+        open_id = sender.get("open_id", "")
+        session_id = f"feishu-p2p-{open_id}" if chat_type == "p2p" else f"feishu-group-{chat_id}"
+
+        print(f"[Feishu] 收到: {text[:50]}... 会话: {session_id}")
+
+        # 调用MemOS生成回复
+        try:
+            result = await chat(user_input=text, session_id=session_id)
+            response_text = result.get("response", "抱歉，处理失败")
+
+            # 发送回复
+            await send_feishu_reply(chat_id, response_text)
+            print(f"[Feishu] 回复已发送")
+        except Exception as e:
+            print(f"[ERROR] Feishu处理失败: {e}")
+
+    return {"code": 0}
+
+
+# ============================================================================
 # Run
 # ============================================================================
 
