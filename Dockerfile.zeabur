@@ -5,12 +5,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装依赖
+# 安装依赖（完整版）
 RUN pip install --no-cache-dir \
     supabase>=2.0.0 \
+    langchain>=0.3.0 \
     langchain-openai>=0.2.0 \
     python-dotenv>=1.0.0 \
-    requests>=2.31.0
+    requests>=2.31.0 \
+    pydantic>=2.0.0
 
 # 复制应用代码（不包括 .env）
 COPY *.py .
