@@ -18,6 +18,20 @@ def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
+def check_env():
+    """检查关键环境变量"""
+    log("Checking environment variables...")
+    required = ['SYSTEM_API_KEY', 'SYSTEM_BASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    for key in required:
+        value = os.getenv(key, '')
+        if value:
+            # 只显示前10个字符
+            log(f"  ✓ {key}: {value[:10]}...")
+        else:
+            log(f"  ✗ {key}: NOT SET!")
+    return all(os.getenv(k) for k in required)
+
+
 def run_extractor():
     """运行提取器"""
     log("[EXTRACTOR] Starting batch_extractor...")
@@ -138,6 +152,12 @@ def main():
     log("=" * 60)
     log("MemOS Zeabur Scheduler Started")
     log("=" * 60)
+
+    # 检查环境变量
+    if not check_env():
+        log("✗ CRITICAL: Missing required environment variables!")
+        log("Please check your Zeabur environment variable settings.")
+        sys.exit(1)
     log("Schedule:")
     log("  - Extractor: Every 10 minutes")
     log("  - Compiler: Every 30 minutes")
