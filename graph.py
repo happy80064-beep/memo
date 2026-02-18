@@ -1333,12 +1333,14 @@ class MemOSGraph:
         intent = state["intent"]
         global_context = state.get("global_context", {})
         retrieved = state.get("retrieved_entities", [])
+        session_history = state.get("session_history", [])
 
         # 构建 System Prompt
         system_prompt = self._build_system_prompt(
             global_context,
             retrieved,
-            intent
+            intent,
+            session_history
         )
 
         # 构建消息列表
@@ -1377,8 +1379,11 @@ class MemOSGraph:
 
     def _build_system_prompt(self, global_context: Dict,
                             retrieved: List[Dict],
-                            intent: str) -> str:
+                            intent: str,
+                            session_history: List[Dict] = None) -> str:
         """构建 System Prompt（优化版：隐私保护 + 简洁回答）"""
+
+        session_history = session_history or []
 
         # 1. User Profile - 根据意图过滤敏感信息
         profile_parts = []
@@ -1395,7 +1400,21 @@ class MemOSGraph:
         if profile_text:
             profile_text = f"## 用户画像\n{profile_text}\n"
 
-        # 2. 检索到的知识 - 精简展示，只显示匹配的事实
+        # 2. 会话历史（最近对话上下文）
+        session_history_text = ""
+        if session_history:
+            # 只取最近3轮对话
+            recent_history = session_history[-3:]
+            history_parts = []
+            for h in recent_history:
+                user_msg = h.get('user_input', '')
+                ai_msg = h.get('response', '')
+                if user_msg and ai_msg:
+                    history_parts.append(f"用户: {user_msg}\nAI: {ai_msg[:100]}...")
+            if history_parts:
+                session_history_text = "## 刚才的对话\n" + "\n\n".join(history_parts) + "\n\n"
+
+        # 3. 检索到的知识 - 精简展示，只显示匹配的事实
         retrieved_facts = []
         needs_retrieval = intent in ["PERSONAL_QUERY", "WORK_QUERY", "TASK", "FOLLOW_UP"]
 
@@ -1456,13 +1475,19 @@ class MemOSGraph:
    - 自然地询问用户是否愿意分享
    - 不要生硬地说"没有记录"
 
+6. **注意对话上下文**:
+   - 仔细看"刚才的对话"，理解用户在延续什么话题
+   - 如果用户说"还没想好"、"我是指..."，说明你在理解上有偏差，要及时纠正
+   - 不要突然跳到不相关的话题
+
 ## 参考信息
-{retrieved_text}{profile_text}
-请像好朋友一样自然地回答用户问题。
+{session_history_text}{retrieved_text}{profile_text}
+请像好朋友一样自然地回答用户问题，注意刚才的对话上下文。
 """
 
         # 格式化模板，填充检索到的信息和画像
         prompt = base_guidelines.format(
+            session_history_text=session_history_text,
             retrieved_text=retrieved_text,
             profile_text=profile_text
         )
