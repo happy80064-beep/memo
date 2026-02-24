@@ -774,6 +774,17 @@ async def feishu_webhook(request: Request):
         event = data.get("event", {})
         message = event.get("message", {})
 
+        # 时间戳过滤：忽略超过5分钟的消息（防止飞书重试旧消息）
+        import time
+        current_time = time.time()
+        message_time_ms = message.get("create_time", 0)
+        message_time = message_time_ms / 1000 if message_time_ms else current_time
+        time_diff = current_time - message_time
+
+        if time_diff > 300:  # 5分钟 = 300秒
+            print(f"[Feishu] 消息太旧({time_diff:.0f}秒前)，跳过")
+            return {"code": 0}
+
         # 消息去重检查
         message_id = message.get("message_id")
         if message_id in _processed_messages:
