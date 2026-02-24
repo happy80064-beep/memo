@@ -791,6 +791,18 @@ async def feishu_webhook(request: Request):
     return {"code": 0}
 
 
+@app.get("/feishu/health")
+async def feishu_health_check():
+    """飞书机器人健康检查"""
+    return {
+        "status": "ok",
+        "service": "feishu-bot",
+        "app_id_configured": bool(FEISHU_APP_ID),
+        "app_secret_configured": bool(FEISHU_APP_SECRET),
+        "verification_token_configured": bool(FEISHU_VERIFICATION_TOKEN)
+    }
+
+
 # ============================================================================
 # Run
 # ============================================================================
