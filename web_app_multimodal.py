@@ -704,6 +704,9 @@ FEISHU_BASE_URL = "https://open.feishu.cn/open-apis"
 
 _token_cache = {"token": None, "expire_at": 0}
 
+# 消息去重缓存（防止飞书重试导致重复回复）
+_processed_messages = set()
+
 async def get_feishu_token() -> str:
     """获取飞书tenant_access_token"""
     global _token_cache
@@ -769,6 +772,25 @@ async def feishu_webhook(request: Request):
     if event_type == "im.message.receive_v1":
         event = data.get("event", {})
         message = event.get("message", {})
+
+        # 消息去重检查
+        message_id = message.get("message_id")
+        if message_id in _processed_messages:
+            print(f"[Feishu] 消息已处理过，跳过: {message_id[:20]}...")
+            return {"code": 0}
+
+        # 立即标记为已处理并返回（防止飞书重试）
+        _processed_messages.add(message_id)
+
+        # 异步处理消息（不阻塞响应）
+        asyncio.create_task(_handle_feishu_message(event, message))
+
+    return {"code": 0}
+
+
+async def _handle_feishu_message(event: dict, message: dict):
+    """异步处理飞书消息（在后台运行）"""
+    try:
         chat_type = message.get("chat_type")
         chat_id = message.get("chat_id")
 
@@ -781,20 +803,17 @@ async def feishu_webhook(request: Request):
         open_id = sender.get("open_id", "")
         session_id = f"feishu-p2p-{open_id}" if chat_type == "p2p" else f"feishu-group-{chat_id}"
 
-        print(f"[Feishu] 收到: {text[:50]}... 会话: {session_id}")
+        print(f"[Feishu] 处理消息: {text[:50]}... 会话: {session_id}")
 
         # 调用MemOS生成回复
-        try:
-            result = await chat(user_input=text, session_id=session_id)
-            response_text = result.get("response", "抱歉，处理失败")
+        result = await chat(user_input=text, session_id=session_id)
+        response_text = result.get("response", "抱歉，处理失败")
 
-            # 发送回复
-            await send_feishu_reply(chat_id, response_text)
-            print(f"[Feishu] 回复已发送")
-        except Exception as e:
-            print(f"[ERROR] Feishu处理失败: {e}")
-
-    return {"code": 0}
+        # 发送回复
+        await send_feishu_reply(chat_id, response_text)
+        print(f"[Feishu] 回复已发送")
+    except Exception as e:
+        print(f"[ERROR] Feishu处理失败: {e}")
 
 
 @app.get("/feishu/health")
