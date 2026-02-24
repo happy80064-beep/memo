@@ -777,8 +777,11 @@ async def feishu_webhook(request: Request):
         # 时间戳过滤：忽略超过5分钟的消息（防止飞书重试旧消息）
         import time
         current_time = time.time()
-        message_time_ms = message.get("create_time", 0)
-        message_time = message_time_ms / 1000 if message_time_ms else current_time
+        try:
+            message_time_ms = int(message.get("create_time", 0))
+            message_time = message_time_ms / 1000 if message_time_ms else current_time
+        except (ValueError, TypeError):
+            message_time = current_time
         time_diff = current_time - message_time
 
         if time_diff > 300:  # 5分钟 = 300秒
