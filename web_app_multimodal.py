@@ -754,12 +754,14 @@ async def feishu_webhook(request: Request):
     if data.get("type") == "url_verification":
         return {"challenge": data.get("challenge")}
 
-    # Token验证（添加调试日志）
-    received_token = data.get("token")
+    # Token验证（适配飞书新版事件格式）
+    # 飞书 token 可能在 header 的 token 字段，也可能在 body 的 token 字段
+    received_token = data.get("token") or data.get("header", {}).get("token")
     if FEISHU_VERIFICATION_TOKEN and received_token != FEISHU_VERIFICATION_TOKEN:
         print(f"[DEBUG] Token mismatch!")
         print(f"[DEBUG] Expected: {FEISHU_VERIFICATION_TOKEN[:10]}...")
         print(f"[DEBUG] Received: {received_token[:10] if received_token else 'None'}...")
+        print(f"[DEBUG] Full data keys: {list(data.keys())}")
         raise HTTPException(status_code=401)
 
     # 处理消息事件
