@@ -6,6 +6,7 @@ MemOS Web API - Multimodal Version with File Upload Support
 import os
 import uuid
 import shutil
+import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import List, Optional
