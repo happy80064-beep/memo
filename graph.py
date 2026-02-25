@@ -1234,8 +1234,10 @@ class MemOSGraph:
         """
         基于语义理解结果搜索事实
         使用语义搜索词而不是简单的关键词匹配
+        【方案A+C】增加description_md搜索和实体全事实补充
         """
         results = []
+        found_entity_ids = set()  # 用于跟踪已找到的实体
 
         try:
             # 构建搜索条件 - 使用语义搜索词
@@ -1254,6 +1256,9 @@ class MemOSGraph:
                     for fact in facts_result.data:
                         entity = fact.get("mem_l3_entities", {})
                         if entity:
+                            entity_id = entity.get('id') or fact.get('entity_id')
+                            if entity_id:
+                                found_entity_ids.add(entity_id)
                             results.append({
                                 **entity,
                                 "matched_fact": fact.get("content", ""),
@@ -1276,6 +1281,9 @@ class MemOSGraph:
                     for fact in facts_result.data:
                         entity = fact.get("mem_l3_entities", {})
                         if entity:
+                            entity_id = entity.get('id') or fact.get('entity_id')
+                            if entity_id:
+                                found_entity_ids.add(entity_id)
                             enriched = {
                                 **entity,
                                 "matched_fact": fact.get("content", ""),
@@ -1286,6 +1294,81 @@ class MemOSGraph:
                                       r.get('matched_fact') == enriched.get('matched_fact')
                                       for r in results):
                                 results.append(enriched)
+
+            # 【方案A】策略3: 搜索description_md（重要！）
+            for term in search_terms[:3]:
+                if len(term) < 2:
+                    continue
+
+                desc_result = self.supabase.table("mem_l3_entities") \
+                    .select("id, path, name, description_md") \
+                    .ilike("description_md", f"%{term}%") \
+                    .limit(5) \
+                    .execute()
+
+                if desc_result.data:
+                    for entity in desc_result.data:
+                        entity_id = entity.get('id')
+                        if entity_id:
+                            found_entity_ids.add(entity_id)
+
+                        # 将description_md作为matched_fact返回
+                        desc_text = entity.get("description_md", "")
+                        if desc_text:
+                            # 截取相关片段（包含搜索词的部分）
+                            term_pos = desc_text.lower().find(term.lower())
+                            if term_pos >= 0:
+                                # 提取搜索词前后200字符的上下文
+                                start = max(0, term_pos - 100)
+                                end = min(len(desc_text), term_pos + len(term) + 100)
+                                context = desc_text[start:end]
+                                matched_snippet = f"[来自档案] ...{context}..."
+                            else:
+                                matched_snippet = f"[来自档案] {desc_text[:200]}..."
+
+                            enriched = {
+                                **entity,
+                                "matched_fact": matched_snippet,
+                                "_source": "description_md"
+                            }
+                            # 去重检查
+                            if not any(r.get('path') == enriched.get('path') and
+                                      r.get('_source') == 'description_md'
+                                      for r in results):
+                                results.append(enriched)
+                                print(f"[SemanticSearch] 从description_md匹配: {entity.get('path')}")
+
+            # 【方案C】策略4: 为找到的每个实体补充所有active事实
+            for entity_id in found_entity_ids:
+                try:
+                    all_facts_result = self.supabase.table("mem_l3_atomic_facts") \
+                        .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                        .eq("entity_id", entity_id) \
+                        .eq("status", "active") \
+                        .limit(20) \
+                        .execute()
+
+                    if all_facts_result.data:
+                        for fact in all_facts_result.data:
+                            entity = fact.get("mem_l3_entities", {})
+                            if entity:
+                                fact_content = fact.get("content", "")
+                                # 检查是否已存在
+                                already_exists = any(
+                                    r.get("path") == entity.get("path") and
+                                    r.get("matched_fact") == fact_content
+                                    for r in results
+                                )
+                                if not already_exists:
+                                    enriched_entity = {
+                                        **entity,
+                                        "matched_fact": fact_content,
+                                        "fact_entity_id": fact.get("entity_id"),
+                                        "_source": "entity_full_facts"
+                                    }
+                                    results.append(enriched_entity)
+                except Exception as e:
+                    print(f"[WARN] 补充实体全事实失败 for {entity_id}: {e}")
 
             print(f"[SemanticSearch] 找到 {len(results)} 条语义匹配")
 
