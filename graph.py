@@ -369,7 +369,7 @@ class MemOSGraph:
         "information_gaps": ["信息缺口"],
         "suggested_topics": ["建议补充的话题"]
     }},
-    "intent": "CASUAL/PERSONAL_QUERY/WORK_QUERY/TASK",
+    "intent": "选择其中一个: CASUAL | PERSONAL_QUERY | WORK_QUERY | TASK",
     "intent_confidence": "high/medium/low",
     "intent_reasoning": "意图判断的完整推理过程",
     "reasoning_summary": "一句话总结",
@@ -492,8 +492,8 @@ class MemOSGraph:
         """条件边决策函数"""
         intent = state["intent"]
 
-        # 需要检索的意图
-        if intent in ["PERSONAL_QUERY", "WORK_QUERY", "TASK"]:
+        # 需要检索的意图（包含个人查询的各种变体）
+        if intent in ["PERSONAL_QUERY", "WORK_QUERY", "TASK"] or "PERSONAL" in intent or "QUERY" in intent:
             return "deep_search"
 
         # CASUAL 和 FOLLOW_UP（非继承）跳过检索
@@ -840,11 +840,16 @@ class MemOSGraph:
 
         # 语义关键词映射（用于内容搜索）
         semantic_map = {
-            # 教育相关
-            "大学": ["university", "college", "school", "campus", "graduate", "本科", "硕士", "博士"],
-            "学校": ["school", "university", "college", "academy"],
-            "毕业": ["graduate", "graduation", "alumni", "degree", "学历"],
-            "专业": ["major", "specialty", " Biotechnology", "生物技术"],
+            # 教育相关（完整覆盖各阶段）
+            "小学": ["elementary", "primary", "小学", "就读"],
+            "初中": ["middle school", "junior high", "初中", "中学", "就读"],
+            "高中": ["high school", "senior high", "高中", "中学", "就读"],
+            "大学": ["university", "college", "school", "campus", "graduate", "本科", "硕士", "博士", "就读"],
+            "学校": ["school", "university", "college", "academy", "就读", "念书", "上学"],
+            "毕业": ["graduate", "graduation", "alumni", "degree", "学历", "毕业于"],
+            "专业": ["major", "specialty", "biotechnology", "生物技术", "主修"],
+            "就读": ["就读", "念书", "上学", "学习", "读书", "求学"],
+            "念书": ["念书", "就读", "上学", "学习", "读书"],
             # 工作相关
             "工作": ["work", "job", "career", "employment", "company"],
             "公司": ["company", "corporation", "firm", "enterprise", "inc"],
@@ -867,15 +872,25 @@ class MemOSGraph:
             "母亲": ["people"],
             "妈妈": ["people"],
             "家人": ["people"],
-            "大学": ["university", "college", "school"],  # 修复：只返回关键词，不是完整路径
+            # 教育相关（完整覆盖）
+            "小学": ["education", "school"],
+            "初中": ["education", "school", "middle-school"],
+            "高中": ["education", "school", "high-school"],
+            "大学": ["university", "college", "school", "education"],
             "学校": ["school", "education"],
+            "就读": ["education", "school"],
+            "念书": ["education", "school"],
             "毕业": ["education"],
+            "专业": ["education"],
+            # 工作相关
             "工作": ["work"],
             "公司": ["work"],
             "职位": ["work"],
             "职业": ["career"],
+            # 人物相关
             "生日": ["people"],
             "年龄": ["people"],
+            # 其他
             "项目": ["projects"],
             "概念": ["concepts"],
             "memos": ["memos"],
@@ -977,8 +992,8 @@ class MemOSGraph:
                 core_keywords.append('生日')
             if '工作' in query_lower or '公司' in query_lower:
                 core_keywords.extend(['工作', '公司', '职位'])
-            if '大学' in query_lower or '学校' in query_lower:
-                core_keywords.extend(['大学', '学校', '专业'])
+            if '大学' in query_lower or '学校' in query_lower or '就读' in query_lower or '念书' in query_lower:
+                core_keywords.extend(['大学', '学校', '专业', '就读', '念书', '小学', '初中', '高中', '毕业'])
 
             # 合并传入的关键词
             all_keywords = list(set(core_keywords + [kw for kw in keywords if len(kw) >= 2]))
