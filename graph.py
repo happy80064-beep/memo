@@ -24,6 +24,7 @@ from supabase import create_client, Client
 
 from llm_factory import get_system_llm, get_user_llm
 from perception import process_attachment
+from relation_entity_handler import RelationEntityHandler, RELATION_CONFIGS
 
 load_dotenv()
 
@@ -98,6 +99,10 @@ class MemOSGraph:
         self.graph = self._build_graph()
         # Session 历史存储（内存中）
         self._session_histories: Dict[str, List[Dict]] = {}
+        # 关系实体处理器
+        self.relation_handler = RelationEntityHandler(self.supabase)
+        # 会话级别的待确认关系状态 {session_id: {relation_key, display_name, ask_count}}
+        self._session_pending_relations: Dict[str, Dict] = {}
 
     def _get_session_history(self, session_id: str) -> List[Dict]:
         """获取会话历史"""
@@ -126,6 +131,7 @@ class MemOSGraph:
         workflow = StateGraph(GraphState)
 
         # 添加节点
+        workflow.add_node("relation_check", self.node_relation_check)
         workflow.add_node("input_perception", self.node_input_perception)
         workflow.add_node("router", self.node_router)
         workflow.add_node("load_global_context", self.node_load_global_context)
@@ -133,7 +139,17 @@ class MemOSGraph:
         workflow.add_node("generate", self.node_generate)
 
         # 设置入口
-        workflow.set_entry_point("input_perception")
+        workflow.set_entry_point("relation_check")
+
+        # 条件边: Relation Check -> 如果需要追问，直接结束；否则继续
+        workflow.add_conditional_edges(
+            "relation_check",
+            self.check_early_return,
+            {
+                "early_return": END,
+                "continue": "input_perception",
+            }
+        )
 
         # 边: Input -> Router
         workflow.add_edge("input_perception", "router")
@@ -159,6 +175,23 @@ class MemOSGraph:
         workflow.add_edge("generate", END)
 
         return workflow.compile()
+
+    def check_early_return(self, state: GraphState):
+        """检查是否需要提前返回（追问用户）"""
+        metadata = state.get("metadata", {})
+        if metadata.get("early_return"):
+            # 保存AI回复到L0（记录追问历史）
+            try:
+                self._save_to_l0_buffer(
+                    role="ai",
+                    content=state.get("response", ""),
+                    attachments=[],
+                    perception="追问用户关系映射"
+                )
+            except Exception as e:
+                print(f"[WARN] 保存追问回复到L0失败: {e}")
+            return "early_return"
+        return "continue"
 
     # =========================================================================
     # Node 1: Input & Perception
@@ -255,6 +288,99 @@ class MemOSGraph:
             print(f"[WARN] L0 Buffer 保存失败: {e}")
             import traceback
             traceback.print_exc()
+
+    # =========================================================================
+    # Node 1.5: Relation Checker - 关系实体检测
+    # 检测用户是否提到关系但系统不知道具体是谁，需要追问
+    # =========================================================================
+
+    async def node_relation_check(self, state: GraphState) -> GraphState:
+        """
+        关系检测节点
+        检测用户是否提到关系但系统不知道具体是谁
+        """
+        user_input = state["user_input"]
+        session_id = state["session_id"]
+
+        # 检查是否有待确认的关系（用户之前被追问过）
+        pending = self._session_pending_relations.get(session_id)
+        if pending:
+            # 用户可能回答了姓名，尝试提取
+            name = self.relation_handler.extract_name_from_response(user_input)
+            if name:
+                # 创建关系映射
+                result = self.relation_handler.create_relation_mapping(
+                    pending["relation_key"],
+                    name,
+                    session_id
+                )
+                if result["success"]:
+                    # 清除待确认状态
+                    del self._session_pending_relations[session_id]
+                    # 回复确认
+                    relation_name = RELATION_CONFIGS[pending["relation_key"]].display_name
+                    response = f"好嘞！{name}我记下了，以后你一说'{relation_name}'我就知道是谁啦！"
+                    return {
+                        **state,
+                        "response": response,
+                        "intent": "CASUAL",
+                        "metadata": {**state.get("metadata", {}), "early_return": True, "relation_mapped": True}
+                    }
+            else:
+                # 用户还是没告诉名字，增加询问次数
+                pending["ask_count"] += 1
+                if pending["ask_count"] >= 2:
+                    # 放弃追问
+                    question = self.relation_handler._generate_question(
+                        pending["relation_key"], "give_up"
+                    )
+                    del self._session_pending_relations[session_id]
+                    return {
+                        **state,
+                        "response": question,
+                        "intent": "CASUAL",
+                        "metadata": {**state.get("metadata", {}), "early_return": True, "give_up": True}
+                    }
+                else:
+                    # 继续追问
+                    question = self.relation_handler._generate_question(
+                        pending["relation_key"], "retry_ask"
+                    )
+                    return {
+                        **state,
+                        "response": question,
+                        "intent": "CASUAL",
+                        "metadata": {**state.get("metadata", {}), "early_return": True}
+                    }
+
+        # 检查用户输入是否包含关系称呼
+        user_input_lower = user_input.lower()
+        for relation_key, config in RELATION_CONFIGS.items():
+            # 检查是否提到该关系（使用同义词匹配）
+            if any(synonym in user_input_lower for synonym in config.synonyms):
+                # 查找是否已知对应的具体人物
+                concrete_person = self.relation_handler.find_concrete_person(relation_key)
+                if not concrete_person:
+                    # 不知道是谁，需要追问
+                    self._session_pending_relations[session_id] = {
+                        "relation_key": relation_key,
+                        "display_name": config.display_name,
+                        "ask_count": 0
+                    }
+                    question = self.relation_handler._generate_question(relation_key, "first_ask")
+                    print(f"[RelationCheck] 检测到关系 '{relation_key}'，追问用户")
+                    return {
+                        **state,
+                        "response": question,
+                        "intent": "CASUAL",
+                        "metadata": {**state.get("metadata", {}), "early_return": True, "relation_unknown": True}
+                    }
+                else:
+                    # 已知关系映射，记录日志
+                    print(f"[RelationCheck] 关系 '{relation_key}' 对应 '{concrete_person['name']}'，正常处理")
+
+        # 正常流程，继续
+        return state
 
     # =========================================================================
     # Node 2: Cognitive Router v4 - 具备多维度推理能力
