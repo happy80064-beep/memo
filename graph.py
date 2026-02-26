@@ -676,7 +676,9 @@ class MemOSGraph:
         confirm_patterns = [
             r'好的.*搜', r'去吧', r'搜吧', r'查吧',
             r'可以.*搜', r'嗯.*搜', r'行.*搜',
-            r'搜$', r'查$', r'去吧.*搜'
+            r'搜$', r'查$', r'去吧.*搜',
+            r'你能.*搜', r'你.*搜一下', r'帮.*搜', r'去.*搜',
+            r'搜.*了解', r'搜.*看看', r'搜.*查查'
         ]
 
         for pattern in confirm_patterns:
@@ -1616,9 +1618,9 @@ class MemOSGraph:
         user_input = state["user_input"]
         session_id = state.get("session_id", "default")
 
-        # 检查是否是搜索确认回复
-        if self._is_search_confirmation(user_input):
-            print(f"[SuggestSearch] 用户确认搜索: {user_input[:50]}")
+        # 检查是否是搜索确认回复或明确的搜索请求
+        if self._is_search_confirmation(user_input) or self._detect_search_intent(user_input):
+            print(f"[SuggestSearch] 用户确认/请求搜索: {user_input[:50]}")
             return await self.node_generate_with_search(state)
 
         # 检查是否是搜索主题命中
@@ -1785,8 +1787,8 @@ class MemOSGraph:
             topic = query[:20] if len(query) <= 20 else query[:20] + "..."
 
             self._save_to_l0_buffer(
-                role="system",
-                content=f"搜索主题已启用: {topic}",
+                role="ai",  # 使用 ai 角色（system 角色被数据库约束限制）
+                content=f"[系统] 搜索主题已启用: {topic}",  # 添加标记以便区分
                 attachments=[],
                 perception="",
                 session_id=session_id,
@@ -1794,7 +1796,8 @@ class MemOSGraph:
                     "type": "search_topic_enabled",
                     "topic": topic,
                     "keywords": keywords,
-                    "original_query": query
+                    "original_query": query,
+                    "is_system_event": True  # 标记是系统事件
                 }
             )
             print(f"[SearchTopic] 保存主题: {topic}, 关键词: {keywords}")

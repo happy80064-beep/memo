@@ -234,23 +234,28 @@ class LLMWithSearch:
     async def _generate_with_search(self, messages: List[BaseMessage]) -> str:
         """使用搜索生成回复"""
         try:
-            # 方案1: 尝试使用 extra_body 传递工具参数（LangChain方式）
-            tools = self._get_search_tools()
-            if tools:
-                print(f"[LLMWithSearch] 启用 {self.model_type} 搜索")
+            print(f"[LLMWithSearch] 启用 {self.model_type} 搜索")
+
+            # 针对 Kimi 使用 extra_headers 启用搜索
+            if self.model_type == "kimi":
+                print("[LLMWithSearch] 使用 Kimi 搜索 (X-Msh-Enable-Search)")
                 response = await self.base_llm.ainvoke(
                     messages,
-                    extra_body={"tools": tools}
+                    extra_headers={"X-Msh-Enable-Search": "true"}
                 )
                 return response.content
-        except Exception as e:
-            print(f"[LLMWithSearch] extra_body 方式失败: {e}")
 
-        try:
-            # 方案2: 使用 HTTP 直接调用
-            return await self._generate_with_search_http(messages)
+            # 针对 Gemini 使用 extra_body
+            elif self.model_type == "gemini":
+                print("[LLMWithSearch] 使用 Gemini 搜索")
+                response = await self.base_llm.ainvoke(
+                    messages,
+                    extra_body={"tools": [{"google_search": {}}]}
+                )
+                return response.content
+
         except Exception as e:
-            print(f"[LLMWithSearch] HTTP 方式失败: {e}")
+            print(f"[LLMWithSearch] 搜索方式失败: {e}")
 
         # 回退到普通生成
         print(f"[LLMWithSearch] 回退到普通生成")
