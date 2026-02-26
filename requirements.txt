@@ -14,6 +14,7 @@ uvicorn>=0.23.0
 # Utils
 python-dotenv>=1.0.0
 requests>=2.31.0
+aiohttp>=3.8.0
 
 # Document Processing (Optional)
 PyPDF2>=3.0.0
