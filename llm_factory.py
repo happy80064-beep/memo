@@ -232,27 +232,21 @@ class LLMWithSearch:
         return result
 
     async def _generate_with_search(self, messages: List[BaseMessage]) -> str:
-        """使用搜索生成回复"""
+        """使用搜索生成回复
+
+        Kimi 搜索流程：
+        1. 首次调用传入 tools=[{"type": "builtin_function", "function": {"name": "$web_search"}}]
+        2. 如果返回 finish_reason="tool_calls"，将 tool_call 原样返回
+        3. Kimi 执行实际搜索并返回最终结果
+        """
         try:
             print(f"[LLMWithSearch] 启用 {self.model_type} 搜索")
 
-            # 针对 Kimi 使用 extra_headers 启用搜索
             if self.model_type == "kimi":
-                print("[LLMWithSearch] 使用 Kimi 搜索 (X-Msh-Enable-Search)")
-                response = await self.base_llm.ainvoke(
-                    messages,
-                    extra_headers={"X-Msh-Enable-Search": "true"}
-                )
-                return response.content
+                return await self._generate_with_kimi_search(messages)
 
-            # 针对 Gemini 使用 extra_body
             elif self.model_type == "gemini":
-                print("[LLMWithSearch] 使用 Gemini 搜索")
-                response = await self.base_llm.ainvoke(
-                    messages,
-                    extra_body={"tools": [{"google_search": {}}]}
-                )
-                return response.content
+                return await self._generate_with_gemini_search(messages)
 
         except Exception as e:
             print(f"[LLMWithSearch] 搜索方式失败: {e}")
@@ -260,6 +254,71 @@ class LLMWithSearch:
         # 回退到普通生成
         print(f"[LLMWithSearch] 回退到普通生成")
         response = await self.base_llm.ainvoke(messages)
+        return response.content
+
+    async def _generate_with_kimi_search(self, messages: List[BaseMessage]) -> str:
+        """使用 Kimi 官方 builtin_function $web_search 进行搜索
+
+        参考：https://platform.moonshot.cn/docs/guide/use-web-search
+        """
+        from langchain_core.messages import ToolMessage, AIMessage
+
+        print("[LLMWithSearch] 使用 Kimi $web_search builtin_function")
+
+        # 定义搜索工具
+        tools = [{
+            "type": "builtin_function",
+            "function": {"name": "$web_search"}
+        }]
+
+        # 首次调用 - 传入工具声明
+        response = await self.base_llm.ainvoke(
+            messages,
+            tools=tools
+        )
+
+        # 检查是否需要执行搜索 (finish_reason == "tool_calls")
+        if not hasattr(response, 'tool_calls') or not response.tool_calls:
+            print("[LLMWithSearch] Kimi 未触发搜索，返回普通结果")
+            return response.content
+
+        print(f"[LLMWithSearch] Kimi 触发搜索，tool_calls: {len(response.tool_calls)}")
+
+        # 处理所有 tool_calls
+        new_messages = list(messages)
+        new_messages.append(response)  # 必须添加 assistant 的 tool_calls 消息
+
+        for tool_call in response.tool_calls:
+            if tool_call.get("name") == "$web_search":
+                # 对于 $web_search，只需要将参数原样返回
+                # Kimi 会在服务端执行实际搜索
+                tool_result = {
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "name": "$web_search",
+                    "content": tool_call["args"] if tool_call.get("args") else "{}"
+                }
+                new_messages.append(ToolMessage(
+                    content=str(tool_result["content"]),
+                    tool_call_id=tool_call["id"],
+                    name="$web_search"
+                ))
+                print(f"[LLMWithSearch] 返回 $web_search 结果，token预估: {tool_call.get('args', {}).get('total_tokens', 'unknown')}")
+
+        # 第二次调用 - 获取搜索结果后的最终回复
+        final_response = await self.base_llm.ainvoke(new_messages, tools=tools)
+        print("[LLMWithSearch] Kimi 搜索完成")
+        return final_response.content
+
+    async def _generate_with_gemini_search(self, messages: List[BaseMessage]) -> str:
+        """使用 Gemini 搜索"""
+        print("[LLMWithSearch] 使用 Gemini google_search")
+
+        # Gemini 使用 extra_body 启用搜索
+        response = await self.base_llm.ainvoke(
+            messages,
+            extra_body={"tools": [{"google_search": {}}]}
+        )
         return response.content
 
     async def _generate_with_search_http(self, messages: List[BaseMessage]) -> str:
