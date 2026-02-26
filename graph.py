@@ -289,15 +289,16 @@ class MemOSGraph:
             content: 内容
             attachments: 附件列表
             perception: 感知结果
-            session_id: 会话ID
+            session_id: 会话ID（存入meta_data）
             meta_data: 额外的元数据
         """
         try:
-            # 合并元数据
+            # 合并元数据（将session_id放入meta_data）
             base_meta = {
                 "attachments": attachments,
                 "perception": perception,
                 "source": "graph_input",
+                "session_id": session_id,  # 放入meta_data而不是单独字段
             }
             if meta_data:
                 base_meta.update(meta_data)
@@ -310,7 +311,7 @@ class MemOSGraph:
                 "content": content,
                 "meta_data": base_meta,
                 "processed": False,
-                "session_id": session_id,
+                # 注意：没有session_id字段，放在meta_data中
             }
 
             result = self.supabase.table("mem_l0_buffer").insert(insert_data).execute()
@@ -318,7 +319,6 @@ class MemOSGraph:
         except Exception as e:
             print(f"[WARN] L0 Buffer 保存失败: {e}")
             import traceback
-            traceback.print_exc()
             traceback.print_exc()
 
     # =========================================================================
@@ -1727,18 +1727,23 @@ class MemOSGraph:
         }
 
     def _load_search_topics(self, session_id: str) -> Dict:
-        """从 L0 Buffer 加载搜索主题"""
+        """从 L0 Buffer 加载搜索主题
+
+        从 meta_data 中过滤 session_id（因为session_id存储在meta_data中）
+        """
         try:
-            result = self.supabase.table("l0_conversation_buffer") \
+            # 查询所有 system 角色的记录（session_id在meta_data中，无法直接用eq查询）
+            result = self.supabase.table("mem_l0_buffer") \
                 .select("content, meta_data, created_at") \
-                .eq("session_id", session_id) \
                 .eq("role", "system") \
                 .execute()
 
             topics = {}
             for record in result.data:
                 meta = record.get("meta_data", {})
-                if meta.get("type") == "search_topic_enabled":
+                # 检查是否是指定session_id的搜索主题
+                if meta.get("type") == "search_topic_enabled" and \
+                   meta.get("session_id") == session_id:
                     topic = meta.get("topic", "")
                     if topic:
                         topics[topic] = {
