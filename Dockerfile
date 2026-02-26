@@ -1,7 +1,7 @@
 # MemOS v2.1 - Unified Dockerfile
 # 支持 Web 服务和调度器两种模式
 # 通过 Zeabur 控制台设置不同的 Start Command 来区分
-# Trigger rebuild: 2026-02-14
+# Trigger rebuild: 2026-02-26-01
 
 FROM python:3.11-slim
 
@@ -21,7 +21,8 @@ RUN pip install --no-cache-dir \
     PyPDF2>=3.0.0 \
     python-docx>=1.1.0 \
     python-multipart>=0.0.6 \
-    langgraph>=0.2.0
+    langgraph>=0.2.0 \
+    aiohttp>=3.8.0
 
 # 复制应用代码
 COPY *.py .
