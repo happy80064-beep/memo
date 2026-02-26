@@ -5,6 +5,7 @@ LLM Factory - 混合模型架构工厂
 """
 
 import os
+import json
 import aiohttp
 from typing import Optional, List, Dict, Any
 from functools import lru_cache
@@ -234,95 +235,73 @@ class LLMWithSearch:
     async def _generate_with_search(self, messages: List[BaseMessage]) -> str:
         """使用搜索生成回复
 
-        Kimi 搜索流程：
-        1. 首次调用传入 tools=[{"type": "builtin_function", "function": {"name": "$web_search"}}]
-        2. 如果返回 finish_reason="tool_calls"，将 tool_call 原样返回
-        3. Kimi 执行实际搜索并返回最终结果
+        对于 Kimi 模型：使用原生 $web_search builtin_function
+        对于 Gemini 模型：使用外部搜索 API
         """
         try:
             print(f"[LLMWithSearch] 启用 {self.model_type} 搜索")
 
             if self.model_type == "kimi":
-                return await self._generate_with_kimi_search(messages)
-
+                return await self._generate_with_kimi_native_search(messages)
             elif self.model_type == "gemini":
                 return await self._generate_with_gemini_search(messages)
+            else:
+                # 其他模型使用外部搜索
+                return await self._generate_with_external_search(messages)
 
         except Exception as e:
             print(f"[LLMWithSearch] 搜索方式失败: {e}")
+            import traceback
+            traceback.print_exc()
 
         # 回退到普通生成
         print(f"[LLMWithSearch] 回退到普通生成")
         response = await self.base_llm.ainvoke(messages)
         return response.content
 
-    async def _generate_with_kimi_search(self, messages: List[BaseMessage]) -> str:
-        """使用 Kimi 官方 builtin_function $web_search 进行搜索
+    async def _generate_with_kimi_native_search(self, messages: List[BaseMessage]) -> str:
+        """使用 Kimi 官方 $web_search builtin_function 进行搜索
+
+        关键配置（经测试验证）：
+        1. 使用 HTTP 直接调用，不是 LangChain ChatOpenAI
+        2. thinking: {"type": "disabled"} 必须放在请求体顶层
+        3. temperature 必须是 0.6（禁用 thinking 时的限制）
 
         参考：https://platform.moonshot.cn/docs/guide/use-web-search
         """
-        from langchain_core.messages import ToolMessage, AIMessage
+        print("[LLMWithSearch] 使用 Kimi $web_search (原生 API)")
 
-        print("[LLMWithSearch] 使用 Kimi $web_search builtin_function")
+        url = f"{self.config.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json"
+        }
 
-        # 定义搜索工具
-        tools = [{
-            "type": "builtin_function",
-            "function": {"name": "$web_search"}
-        }]
+        # 转换消息格式，并在 system prompt 中添加搜索指令
+        msgs = []
+        search_instruction = "\n\n【重要】你必须使用 $web_search 工具搜索互联网获取最新信息来回答用户问题，不要依赖训练数据。"
 
-        # 首次调用 - 传入工具声明
-        response = await self.base_llm.ainvoke(
-            messages,
-            tools=tools
-        )
+        for msg in messages:
+            role = getattr(msg, 'type', 'human')
+            if role == 'human':
+                role = 'user'
+            elif role == 'ai':
+                role = 'assistant'
+            elif role == 'system':
+                role = 'system'
+                # 在 system message 中添加搜索指令
+                content = getattr(msg, 'content', str(msg)) + search_instruction
+                msgs.append({"role": role, "content": content})
+                continue
+            else:
+                role = 'user'
+            content = getattr(msg, 'content', str(msg))
+            msgs.append({"role": role, "content": content})
 
-        # 检查是否需要执行搜索 (finish_reason == "tool_calls")
-        if not hasattr(response, 'tool_calls') or not response.tool_calls:
-            print("[LLMWithSearch] Kimi 未触发搜索，返回普通结果")
-            return response.content
+        # 如果没有 system message，添加一个
+        if not any(m.get("role") == "system" for m in msgs):
+            msgs.insert(0, {"role": "system", "content": f"你是 Kimi AI 助手。{search_instruction}"})
 
-        print(f"[LLMWithSearch] Kimi 触发搜索，tool_calls: {len(response.tool_calls)}")
-
-        # 处理所有 tool_calls
-        new_messages = list(messages)
-        new_messages.append(response)  # 必须添加 assistant 的 tool_calls 消息
-
-        for tool_call in response.tool_calls:
-            if tool_call.get("name") == "$web_search":
-                # 对于 $web_search，只需要将参数原样返回
-                # Kimi 会在服务端执行实际搜索
-                tool_result = {
-                    "role": "tool",
-                    "tool_call_id": tool_call["id"],
-                    "name": "$web_search",
-                    "content": tool_call["args"] if tool_call.get("args") else "{}"
-                }
-                new_messages.append(ToolMessage(
-                    content=str(tool_result["content"]),
-                    tool_call_id=tool_call["id"],
-                    name="$web_search"
-                ))
-                print(f"[LLMWithSearch] 返回 $web_search 结果，token预估: {tool_call.get('args', {}).get('total_tokens', 'unknown')}")
-
-        # 第二次调用 - 获取搜索结果后的最终回复
-        final_response = await self.base_llm.ainvoke(new_messages, tools=tools)
-        print("[LLMWithSearch] Kimi 搜索完成")
-        return final_response.content
-
-    async def _generate_with_gemini_search(self, messages: List[BaseMessage]) -> str:
-        """使用 Gemini 搜索"""
-        print("[LLMWithSearch] 使用 Gemini google_search")
-
-        # Gemini 使用 extra_body 启用搜索
-        response = await self.base_llm.ainvoke(
-            messages,
-            extra_body={"tools": [{"google_search": {}}]}
-        )
-        return response.content
-
-    async def _generate_with_search_http(self, messages: List[BaseMessage]) -> str:
-        """使用 HTTP 直接调用启用搜索"""
         url = f"{self.config.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
@@ -332,28 +311,150 @@ class LLMWithSearch:
         # 转换消息格式
         msgs = []
         for msg in messages:
-            role = getattr(msg, 'role', 'user')
+            role = getattr(msg, 'type', 'human')
+            if role == 'human':
+                role = 'user'
+            elif role == 'ai':
+                role = 'assistant'
+            elif role == 'system':
+                role = 'system'
+            else:
+                role = 'user'
             content = getattr(msg, 'content', str(msg))
             msgs.append({"role": role, "content": content})
 
-        data = {
+        # 定义搜索工具
+        tools = [{
+            "type": "builtin_function",
+            "function": {"name": "$web_search"}
+        }]
+
+        # 第一次调用 - 关键：禁用 thinking 模式，temperature=0.6
+        data1 = {
             "model": self.config.model,
             "messages": msgs,
-            "tools": self._get_search_tools(),
-            "temperature": self.config.temperature,
+            "tools": tools,
+            "temperature": 0.6,  # 禁用 thinking 时必须是 0.6
+            "thinking": {"type": "disabled"}  # 关键：放在顶层，禁用 thinking
         }
 
-        if self.config.max_tokens:
-            data["max_tokens"] = self.config.max_tokens
-
+        # 第一次调用
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data, timeout=60) as resp:
+            async with session.post(url, headers=headers, json=data1, timeout=60) as resp:
                 if resp.status != 200:
                     text = await resp.text()
                     raise Exception(f"HTTP {resp.status}: {text[:200]}")
 
                 result = await resp.json()
-                return result["choices"][0]["message"]["content"]
+                choice = result["choices"][0]
+                message = choice["message"]
+
+                # 检查是否触发了 tool_calls
+                if choice.get("finish_reason") != "tool_calls":
+                    print("[LLMWithSearch] Kimi 未触发搜索，返回普通结果")
+                    return message["content"]
+
+                tool_calls = message.get("tool_calls", [])
+                print(f"[LLMWithSearch] Kimi 触发搜索，tool_calls: {len(tool_calls)}")
+
+                # 构建 assistant 消息
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": message.get("content", ""),
+                    "tool_calls": tool_calls
+                }
+
+                # 如果有 reasoning_content，保留它
+                if "reasoning_content" in message:
+                    assistant_msg["reasoning_content"] = message["reasoning_content"]
+
+                msgs.append(assistant_msg)
+
+                # 添加 tool 结果（原样返回参数）
+                for tc in tool_calls:
+                    msgs.append({
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "name": tc["function"]["name"],
+                        "content": tc["function"]["arguments"]
+                    })
+                    args = json.loads(tc["function"]["arguments"])
+                    if "total_tokens" in args.get("usage", {}):
+                        print(f"[LLMWithSearch] Token预估: {args['usage']['total_tokens']}")
+
+            # 第二次调用 - 同样禁用 thinking
+            data2 = {
+                "model": self.config.model,
+                "messages": msgs,
+                "temperature": 0.6,
+                "thinking": {"type": "disabled"}
+            }
+
+            async with session.post(url, headers=headers, json=data2, timeout=60) as resp:
+                if resp.status != 200:
+                    text = await resp.text()
+                    raise Exception(f"HTTP {resp.status}: {text[:200]}")
+
+                final_result = await resp.json()
+                print("[LLMWithSearch] Kimi 搜索完成")
+                return final_result["choices"][0]["message"]["content"]
+
+    async def _generate_with_gemini_search(self, messages: List[BaseMessage]) -> str:
+        """使用 Gemini 搜索
+
+        Gemini 的 OpenAI 兼容端点不支持内置搜索工具，使用外部搜索 API
+        """
+        print("[LLMWithSearch] Gemini 使用外部搜索 API")
+        return await self._generate_with_external_search(messages)
+
+    async def _generate_with_external_search(self, messages: List[BaseMessage]) -> str:
+        """使用外部搜索 API（DuckDuckGo/SerpAPI）获取搜索结果
+
+        适用于不支持内置搜索的模型
+        """
+        from search_tool import SearchTool
+
+        # 提取用户查询
+        user_query = ""
+        for msg in reversed(messages):
+            msg_type = getattr(msg, 'type', '')
+            if msg_type == 'human':
+                user_query = getattr(msg, 'content', str(msg))
+                break
+
+        if not user_query:
+            print("[LLMWithSearch] 未找到用户查询，回退到普通生成")
+            response = await self.base_llm.ainvoke(messages)
+            return response.content
+
+        print(f"[LLMWithSearch] 外部搜索查询: {user_query[:100]}...")
+
+        # 执行搜索
+        search_tool = SearchTool()
+        search_results = await search_tool.search(user_query, num_results=5)
+
+        if "搜索失败" in search_results or "未找到" in search_results:
+            print(f"[LLMWithSearch] 搜索未返回结果: {search_results[:100]}")
+
+        print(f"[LLMWithSearch] 搜索结果:\n{search_results[:500]}...")
+
+        # 构建包含搜索结果的新消息
+        search_context = f"""【联网搜索结果】
+以下是从互联网搜索到的最新信息，请基于这些信息回答用户问题：
+
+{search_results}
+
+请基于以上搜索结果回答用户的问题。"""
+
+        # 复制消息列表并添加搜索结果
+        from langchain_core.messages import SystemMessage
+        new_messages = list(messages)
+        new_messages.append(SystemMessage(content=search_context))
+
+        # 生成回复
+        response = await self.base_llm.ainvoke(new_messages)
+        print("[LLMWithSearch] 外部搜索增强生成完成")
+        return response.content
 
 
 def get_user_llm_with_search() -> LLMWithSearch:
