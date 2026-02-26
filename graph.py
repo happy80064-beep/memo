@@ -22,9 +22,10 @@ from langchain_core.messages import (
 from langchain_core.runnables import RunnableConfig
 from supabase import create_client, Client
 
-from llm_factory import get_system_llm, get_user_llm
+from llm_factory import get_system_llm, get_user_llm, get_user_llm_with_search
 from perception import process_attachment
 from relation_entity_handler import RelationEntityHandler, RELATION_CONFIGS
+import re
 
 load_dotenv()
 
@@ -44,7 +45,7 @@ class GraphState(TypedDict):
     perception_result: Optional[str]
 
     # 路由决策
-    intent: Literal["CASUAL", "PERSONAL_QUERY", "WORK_QUERY", "TASK", "FOLLOW_UP"]
+    intent: Literal["CASUAL", "PERSONAL_QUERY", "WORK_QUERY", "TASK", "FOLLOW_UP", "SEARCH_REQUIRED"]
 
     # 对话历史（用于跟进检测）
     session_history: List[Dict]  # 最近几轮对话记录
@@ -61,6 +62,13 @@ class GraphState(TypedDict):
     # 生成
     messages: List[BaseMessage]
     response: Optional[str]
+
+    # 搜索相关
+    info_status: Optional[str]  # 'SUFFICIENT' | 'INSUFFICIENT' | None
+    search_suggested: bool  # 是否已建议搜索
+    search_confirmed: bool  # 用户是否确认搜索
+    search_topics: Dict  # 搜索主题记录
+    force_search: bool  # 是否强制搜索
 
     # 元数据
     metadata: Dict
@@ -136,6 +144,7 @@ class MemOSGraph:
         workflow.add_node("router", self.node_router)
         workflow.add_node("load_global_context", self.node_load_global_context)
         workflow.add_node("deep_search", self.node_deep_search)
+        workflow.add_node("suggest_search", self.node_suggest_search)
         workflow.add_node("generate", self.node_generate)
 
         # 设置入口
@@ -155,13 +164,14 @@ class MemOSGraph:
         workflow.add_edge("input_perception", "router")
 
         # 条件边: Router 决策
-        # 返回: deep_search (需要检索) 或 load_global_context (跳过检索)
+        # 返回: deep_search (需要检索) 或 load_global_context (跳过检索) 或 suggest_search (建议搜索)
         workflow.add_conditional_edges(
             "router",
             self.decide_intent,
             {
                 "deep_search": "deep_search",
                 "load_global_context": "load_global_context",
+                "suggest_search": "suggest_search",
             }
         )
 
@@ -170,6 +180,9 @@ class MemOSGraph:
 
         # 边: Global Context -> Generate
         workflow.add_edge("load_global_context", "generate")
+
+        # 边: Suggest Search -> END (等待用户确认)
+        workflow.add_edge("suggest_search", END)
 
         # 边: Generate -> END
         workflow.add_edge("generate", END)
@@ -267,26 +280,45 @@ class MemOSGraph:
         )
 
     def _save_to_l0_buffer(self, role: str, content: str,
-                          attachments: List[Dict], perception: str):
-        """保存到 L0 Buffer"""
+                          attachments: List[Dict], perception: str,
+                          session_id: str = "default", meta_data: Dict = None):
+        """保存到 L0 Buffer
+
+        Args:
+            role: 角色 (user/ai/system)
+            content: 内容
+            attachments: 附件列表
+            perception: 感知结果
+            session_id: 会话ID
+            meta_data: 额外的元数据
+        """
         try:
-            meta_data = {
+            # 合并元数据
+            base_meta = {
                 "attachments": attachments,
                 "perception": perception,
                 "source": "graph_input",
             }
+            if meta_data:
+                base_meta.update(meta_data)
 
-            print(f"[DEBUG] _save_to_l0_buffer: role={role}, content_len={len(content)}")
-            result = self.supabase.table("mem_l0_buffer").insert({
+            print(f"[DEBUG] _save_to_l0_buffer: role={role}, session={session_id}, content_len={len(content)}")
+
+            # 构建插入数据
+            insert_data = {
                 "role": role,
                 "content": content,
-                "meta_data": meta_data,
+                "meta_data": base_meta,
                 "processed": False,
-            }).execute()
+                "session_id": session_id,
+            }
+
+            result = self.supabase.table("mem_l0_buffer").insert(insert_data).execute()
             print(f"[DEBUG] L0保存成功: {result.data}")
         except Exception as e:
             print(f"[WARN] L0 Buffer 保存失败: {e}")
             import traceback
+            traceback.print_exc()
             traceback.print_exc()
 
     # =========================================================================
@@ -614,9 +646,54 @@ class MemOSGraph:
         }
         return result
 
-    def decide_intent(self, state: GraphState) -> Literal["deep_search", "load_global_context"]:
+    def _detect_search_intent(self, user_input: str) -> bool:
+        """检测用户是否有明确搜索意图
+
+        检测模式：
+        - 明确指令：搜索、查一下、去了解、上网找
+        - 确认语句：好的+搜索、去吧、搜吧
+        """
+        user_input_lower = user_input.lower()
+
+        # 明确搜索指令
+        explicit_patterns = [
+            r'搜索', r'搜一下', r'查一下', r'去了解', r'上网找',
+            r'查查', r'查查看', r'找一下', r'查资料', r'调研一下',
+            r'搜搜', r'查查.*最新', r'了解.*最新'
+        ]
+
+        for pattern in explicit_patterns:
+            if re.search(pattern, user_input_lower):
+                return True
+
+        return False
+
+    def _is_search_confirmation(self, user_input: str) -> bool:
+        """检测用户是否确认之前的搜索建议"""
+        user_input_lower = user_input.lower()
+
+        # 确认搜索的模式
+        confirm_patterns = [
+            r'好的.*搜', r'去吧', r'搜吧', r'查吧',
+            r'可以.*搜', r'嗯.*搜', r'行.*搜',
+            r'搜$', r'查$', r'去吧.*搜'
+        ]
+
+        for pattern in confirm_patterns:
+            if re.search(pattern, user_input_lower):
+                return True
+
+        return False
+
+    def decide_intent(self, state: GraphState) -> Literal["deep_search", "load_global_context", "suggest_search"]:
         """条件边决策函数"""
         intent = state["intent"]
+        user_input = state["user_input"]
+
+        # 检查是否有明确搜索意图
+        if self._detect_search_intent(user_input):
+            print(f"[DecideIntent] 检测到搜索意图: {user_input[:50]}")
+            return "suggest_search"
 
         # 需要检索的意图（包含个人查询的各种变体）
         if intent in ["PERSONAL_QUERY", "WORK_QUERY", "TASK"] or "PERSONAL" in intent or "QUERY" in intent:
@@ -1232,21 +1309,19 @@ class MemOSGraph:
 
     async def _search_by_semantic_terms(self, search_terms: List[str], entities: List[Dict]) -> List[Dict]:
         """
-        基于语义理解结果搜索事实
-        使用语义搜索词而不是简单的关键词匹配
-        【方案A+C】增加description_md搜索和实体全事实补充
+        基于语义理解结果搜索 - 【实体级检索】
+        找到相关实体后，返回实体的完整档案（description_md），而不是事实碎片
         """
-        results = []
-        found_entity_ids = set()  # 用于跟踪已找到的实体
+        found_entities = {}  # 用字典去重，key为entity_id
 
         try:
             # 构建搜索条件 - 使用语义搜索词
             entity_names = [e.get('name', '') for e in entities if e.get('name')]
 
-            # 策略1: 按实体名搜索其所有事实
-            for name in entity_names[:3]:  # 限制数量
+            # 策略1: 按实体名搜索，收集实体ID
+            for name in entity_names[:3]:
                 facts_result = self.supabase.table("mem_l3_atomic_facts") \
-                    .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                    .select("entity_id, mem_l3_entities(id, path, name, description_md)") \
                     .eq("status", "active") \
                     .ilike("content", f"%{name}%") \
                     .limit(10) \
@@ -1255,23 +1330,17 @@ class MemOSGraph:
                 if facts_result.data:
                     for fact in facts_result.data:
                         entity = fact.get("mem_l3_entities", {})
-                        if entity:
-                            entity_id = entity.get('id') or fact.get('entity_id')
-                            if entity_id:
-                                found_entity_ids.add(entity_id)
-                            results.append({
-                                **entity,
-                                "matched_fact": fact.get("content", ""),
-                                "fact_entity_id": fact.get("entity_id")
-                            })
+                        entity_id = entity.get('id') if entity else fact.get('entity_id')
+                        if entity_id and entity_id not in found_entities:
+                            found_entities[entity_id] = entity
 
-            # 策略2: 按语义搜索词搜索
+            # 策略2: 按语义搜索词搜索，收集实体ID
             for term in search_terms[:5]:
                 if len(term) < 2:
                     continue
 
                 facts_result = self.supabase.table("mem_l3_atomic_facts") \
-                    .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
+                    .select("entity_id, mem_l3_entities(id, path, name, description_md)") \
                     .eq("status", "active") \
                     .ilike("content", f"%{term}%") \
                     .limit(5) \
@@ -1280,22 +1349,15 @@ class MemOSGraph:
                 if facts_result.data:
                     for fact in facts_result.data:
                         entity = fact.get("mem_l3_entities", {})
+                        entity_id = entity.get('id') if entity else fact.get('entity_id')
+                        if entity_id and entity_id not in found_entities:
+                            found_entities[entity_id] = entity
                         if entity:
                             entity_id = entity.get('id') or fact.get('entity_id')
-                            if entity_id:
-                                found_entity_ids.add(entity_id)
-                            enriched = {
-                                **entity,
-                                "matched_fact": fact.get("content", ""),
-                                "fact_entity_id": fact.get("entity_id")
-                            }
-                            # 去重
-                            if not any(r.get('path') == enriched.get('path') and
-                                      r.get('matched_fact') == enriched.get('matched_fact')
-                                      for r in results):
-                                results.append(enriched)
+                            if entity_id and entity_id not in found_entities:
+                                found_entities[entity_id] = entity
 
-            # 【方案A】策略3: 搜索description_md（重要！）
+            # 策略3: 搜索description_md，收集实体
             for term in search_terms[:3]:
                 if len(term) < 2:
                     continue
@@ -1309,68 +1371,48 @@ class MemOSGraph:
                 if desc_result.data:
                     for entity in desc_result.data:
                         entity_id = entity.get('id')
-                        if entity_id:
-                            found_entity_ids.add(entity_id)
+                        if entity_id and entity_id not in found_entities:
+                            found_entities[entity_id] = entity
+                            print(f"[SemanticSearch] 从description_md匹配: {entity.get('path')}")
 
-                        # 将description_md作为matched_fact返回
-                        desc_text = entity.get("description_md", "")
-                        if desc_text:
-                            # 截取相关片段（包含搜索词的部分）
-                            term_pos = desc_text.lower().find(term.lower())
-                            if term_pos >= 0:
-                                # 提取搜索词前后200字符的上下文
-                                start = max(0, term_pos - 100)
-                                end = min(len(desc_text), term_pos + len(term) + 100)
-                                context = desc_text[start:end]
-                                matched_snippet = f"[来自档案] ...{context}..."
-                            else:
-                                matched_snippet = f"[来自档案] {desc_text[:200]}..."
-
-                            enriched = {
-                                **entity,
-                                "matched_fact": matched_snippet,
-                                "_source": "description_md"
-                            }
-                            # 去重检查
-                            if not any(r.get('path') == enriched.get('path') and
-                                      r.get('_source') == 'description_md'
-                                      for r in results):
-                                results.append(enriched)
-                                print(f"[SemanticSearch] 从description_md匹配: {entity.get('path')}")
-
-            # 【方案C】策略4: 为找到的每个实体补充所有active事实
-            for entity_id in found_entity_ids:
+            # 【实体级检索】为每个找到的实体构建完整信息
+            results = []
+            for entity_id, entity in found_entities.items():
                 try:
-                    all_facts_result = self.supabase.table("mem_l3_atomic_facts") \
-                        .select("content, entity_id, mem_l3_entities(path, name, description_md)") \
-                        .eq("entity_id", entity_id) \
-                        .eq("status", "active") \
-                        .limit(20) \
+                    # 获取该实体的完整信息（包括最新的description_md）
+                    entity_full = self.supabase.table("mem_l3_entities") \
+                        .select("id, path, name, description_md") \
+                        .eq("id", entity_id) \
                         .execute()
 
-                    if all_facts_result.data:
-                        for fact in all_facts_result.data:
-                            entity = fact.get("mem_l3_entities", {})
-                            if entity:
-                                fact_content = fact.get("content", "")
-                                # 检查是否已存在
-                                already_exists = any(
-                                    r.get("path") == entity.get("path") and
-                                    r.get("matched_fact") == fact_content
-                                    for r in results
-                                )
-                                if not already_exists:
-                                    enriched_entity = {
-                                        **entity,
-                                        "matched_fact": fact_content,
-                                        "fact_entity_id": fact.get("entity_id"),
-                                        "_source": "entity_full_facts"
-                                    }
-                                    results.append(enriched_entity)
-                except Exception as e:
-                    print(f"[WARN] 补充实体全事实失败 for {entity_id}: {e}")
+                    if entity_full.data:
+                        entity_info = entity_full.data[0]
 
-            print(f"[SemanticSearch] 找到 {len(results)} 条语义匹配")
+                        # 获取关键atomic_facts（限制数量，避免信息过载）
+                        key_facts = []
+                        facts_result = self.supabase.table("mem_l3_atomic_facts") \
+                            .select("content") \
+                            .eq("entity_id", entity_id) \
+                            .eq("status", "active") \
+                            .limit(5) \
+                            .execute()
+
+                        if facts_result.data:
+                            key_facts = [f['content'] for f in facts_result.data]
+
+                        # 构建实体级结果（不是事实碎片）
+                        results.append({
+                            "id": entity_info['id'],
+                            "path": entity_info['path'],
+                            "name": entity_info['name'],
+                            "description_md": entity_info.get('description_md', ''),
+                            "key_facts": key_facts,  # 关键事实列表
+                            "_source": "entity_full"
+                        })
+                except Exception as e:
+                    print(f"[WARN] 获取实体完整信息失败: {e}")
+
+            print(f"[SemanticSearch] 找到 {len(results)} 个相关实体")
 
         except Exception as e:
             print(f"[WARN] 语义搜索失败: {e}")
@@ -1461,6 +1503,11 @@ class MemOSGraph:
             path = r.get('path', '')
             name = r.get('name', '')
             matched_fact = r.get('matched_fact', '')
+            description_md = r.get('description_md', '')
+            key_facts = r.get('key_facts', [])
+
+            # 合并所有文本用于匹配（兼容新旧格式）
+            all_text = matched_fact + ' ' + description_md + ' ' + ' '.join(key_facts)
 
             # PERSONAL_QUERY 意图：提升个人相关实体的分数
             if intent == "PERSONAL_QUERY":
@@ -1469,10 +1516,10 @@ class MemOSGraph:
                 if '/concepts/education' in path or 'university' in path or 'school' in path:
                     score += 1
                 if '父亲' in query or '爸爸' in query or '妈' in query:
-                    if '父亲' in matched_fact or '爸爸' in matched_fact or '妈' in matched_fact:
+                    if '父亲' in all_text or '爸爸' in all_text or '妈' in all_text:
                         score += 3
                 if '大学' in query or '学校' in query:
-                    if '大学' in matched_fact or '毕业' in matched_fact or '专业' in matched_fact:
+                    if '大学' in all_text or '毕业' in all_text or '专业' in all_text:
                         score += 3
 
             # WORK_QUERY 意图：提升工作相关实体
@@ -1494,8 +1541,10 @@ class MemOSGraph:
         # 调试：显示所有输入结果
         print(f"[DEDUP] Input {len(results)} results:")
         for r in results:
-            has_fact = "✓" if r.get('matched_fact') else "✗"
-            print(f"  - {r.get('path')} (score:{r.get('_score',1)}) {has_fact}")
+            has_desc = "✓desc" if r.get('description_md') else ""
+            has_facts = "✓facts" if r.get('key_facts') else ""
+            has_fact = "✓match" if r.get('matched_fact') else ""
+            print(f"  - {r.get('path')} (score:{r.get('_score',1)}) {has_desc}{has_facts}{has_fact}")
 
         for r in results:
             path = r.get('path')
@@ -1507,17 +1556,26 @@ class MemOSGraph:
             if path in seen:
                 # 合并分数
                 seen[path]['_score'] += score
-                # 合并匹配的事实（关键修复：保留所有事实，不只是第一个）
+                # 合并匹配的事实（兼容新旧格式）
+                # 【旧格式】matched_fact
                 if r.get('matched_fact'):
                     existing = seen[path].get('matched_fact', '')
                     new_fact = r['matched_fact']
-                    # 去重追加，用分号分隔多个事实
                     if new_fact not in existing:
                         if existing:
                             seen[path]['matched_fact'] = existing + '; ' + new_fact
                         else:
                             seen[path]['matched_fact'] = new_fact
                         print(f"[DEDUP] Merged fact to {path}: {new_fact[:50]}...")
+                # 【新格式】key_facts
+                if r.get('key_facts'):
+                    existing_facts = seen[path].get('key_facts', [])
+                    new_facts = r['key_facts']
+                    for fact in new_facts:
+                        if fact not in existing_facts:
+                            existing_facts.append(fact)
+                            print(f"[DEDUP] Merged key_fact to {path}: {fact[:50]}...")
+                    seen[path]['key_facts'] = existing_facts
             else:
                 seen[path] = r
                 ranked.append(r)
@@ -1525,8 +1583,10 @@ class MemOSGraph:
         # 调试：显示输出结果
         print(f"[DEDUP] Output {len(ranked)} results:")
         for r in ranked:
-            has_fact = "✓" if r.get('matched_fact') else "✗"
-            print(f"  - {r.get('path')} {has_fact}")
+            has_desc = "✓desc" if r.get('description_md') else ""
+            has_facts = "✓facts" if r.get('key_facts') else ""
+            has_fact = "✓match" if r.get('matched_fact') else ""
+            print(f"  - {r.get('path')} {has_desc}{has_facts}{has_fact}")
 
         # 按分数降序
         ranked.sort(key=lambda x: x.get('_score', 0), reverse=True)
@@ -1545,7 +1605,232 @@ class MemOSGraph:
         return self._extract_smart_keywords(query, 'path')
 
     # =========================================================================
-    # Node 4: Generate (The Soul)
+    # Node 4: Search Suggestion
+    # =========================================================================
+
+    async def node_suggest_search(self, state: GraphState) -> GraphState:
+        """
+        建议用户启用搜索
+        当记忆信息不足时，引导用户确认搜索
+        """
+        user_input = state["user_input"]
+        session_id = state.get("session_id", "default")
+
+        # 检查是否是搜索确认回复
+        if self._is_search_confirmation(user_input):
+            print(f"[SuggestSearch] 用户确认搜索: {user_input[:50]}")
+            return await self.node_generate_with_search(state)
+
+        # 检查是否是搜索主题命中
+        search_topics = self._load_search_topics(session_id)
+        if self._is_search_topic(user_input, search_topics):
+            print(f"[SuggestSearch] 命中搜索主题，直接搜索")
+            return await self.node_generate_with_search(state)
+
+        # 建议用户搜索
+        suggest_msg = (
+            "这件事我之前好像没听你聊过，我现在也不太了解，"
+            "但如果你想聊，我可以马上去搜索深入了解一下。"
+        )
+
+        print(f"[SuggestSearch] 建议搜索: {suggest_msg}")
+
+        # 保存到 L0 Buffer
+        self._save_to_l0_buffer(
+            role="ai",
+            content=suggest_msg,
+            attachments=[],
+            perception="",
+            session_id=session_id
+        )
+
+        return {
+            **state,
+            "response": suggest_msg,
+            "search_suggested": True,
+            "messages": [
+                SystemMessage(content="等待用户确认是否搜索..."),
+                AIMessage(content=suggest_msg)
+            ]
+        }
+
+    async def node_generate_with_search(self, state: GraphState) -> GraphState:
+        """
+        使用搜索生成回复
+        调用支持搜索的 User Model
+        """
+        user_input = state["user_input"]
+        global_context = state.get("global_context", {})
+        session_history = state.get("session_history", [])
+        session_id = state.get("session_id", "default")
+
+        # 构建基础 System Prompt
+        system_prompt = self._build_system_prompt(
+            global_context,
+            [],  # 搜索时不使用检索结果，避免干扰
+            "SEARCH",
+            session_history
+        )
+
+        # 添加搜索提示
+        search_prompt = f"""{system_prompt}
+
+## 搜索模式
+用户想了解：{user_input}
+
+请基于搜索结果回答。如果搜索结果有限，请如实告知。
+"""
+
+        # 构建消息列表
+        messages = [
+            SystemMessage(content=search_prompt),
+            HumanMessage(content=user_input),
+        ]
+
+        # 调用支持搜索的 LLM
+        try:
+            llm_with_search = get_user_llm_with_search()
+            response_text = await llm_with_search.generate(
+                messages,
+                enable_search=True
+            )
+
+            # 提取主题关键词并保存
+            topic_keywords = self._extract_keywords(user_input)
+            self._save_search_topic(session_id, user_input, topic_keywords)
+
+            # 保存 AI 回复到 L0 Buffer
+            self._save_to_l0_buffer(
+                role="ai",
+                content=response_text,
+                attachments=[],
+                perception="",
+                session_id=session_id,
+                meta_data={"search_enabled": True, "query": user_input}
+            )
+
+            print(f"[GenerateWithSearch] 完成搜索生成")
+
+        except Exception as e:
+            print(f"[ERROR] 搜索生成失败: {e}")
+            response_text = "抱歉，搜索时出现问题。要不咱们聊聊别的，或者你能跟我讲讲这个话题吗？"
+
+        return {
+            **state,
+            "response": response_text,
+            "search_confirmed": True,
+            "messages": messages + [AIMessage(content=response_text)],
+            "metadata": {
+                **state.get("metadata", {}),
+                "search_performed": True,
+            }
+        }
+
+    def _load_search_topics(self, session_id: str) -> Dict:
+        """从 L0 Buffer 加载搜索主题"""
+        try:
+            result = self.supabase.table("l0_conversation_buffer") \
+                .select("content, meta_data, created_at") \
+                .eq("session_id", session_id) \
+                .eq("role", "system") \
+                .execute()
+
+            topics = {}
+            for record in result.data:
+                meta = record.get("meta_data", {})
+                if meta.get("type") == "search_topic_enabled":
+                    topic = meta.get("topic", "")
+                    if topic:
+                        topics[topic] = {
+                            "enabled": True,
+                            "keywords": meta.get("keywords", []),
+                            "since": record.get("created_at"),
+                            "original_query": meta.get("original_query", "")
+                        }
+
+            return topics
+        except Exception as e:
+            print(f"[WARN] 加载搜索主题失败: {e}")
+            return {}
+
+    def _is_search_topic(self, query: str, topics: Dict) -> bool:
+        """检查查询是否命中搜索主题"""
+        if not topics:
+            return False
+
+        query_lower = query.lower()
+        for topic, config in topics.items():
+            # 检查关键词匹配
+            keywords = config.get("keywords", [])
+            for kw in keywords:
+                if kw.lower() in query_lower:
+                    print(f"[SearchTopic] 命中关键词: {kw}")
+                    return True
+
+            # 检查主题本身
+            if topic.lower() in query_lower:
+                return True
+
+        return False
+
+    def _save_search_topic(self, session_id: str, query: str, keywords: List[str]):
+        """保存搜索主题到 L0 Buffer"""
+        try:
+            # 提取主题（使用查询的前10个字符作为主题标识）
+            topic = query[:20] if len(query) <= 20 else query[:20] + "..."
+
+            self._save_to_l0_buffer(
+                role="system",
+                content=f"搜索主题已启用: {topic}",
+                attachments=[],
+                perception="",
+                session_id=session_id,
+                meta_data={
+                    "type": "search_topic_enabled",
+                    "topic": topic,
+                    "keywords": keywords,
+                    "original_query": query
+                }
+            )
+            print(f"[SearchTopic] 保存主题: {topic}, 关键词: {keywords}")
+        except Exception as e:
+            print(f"[WARN] 保存搜索主题失败: {e}")
+
+    def _extract_keywords(self, text: str) -> List[str]:
+        """提取关键词"""
+        # 简单提取：去除停用词，保留名词性词汇
+        stop_words = {'的', '是', '在', '和', '了', '我', '你', '他', '她', '它', '们',
+                      '这', '那', '有', '个', '吗', '什么', '怎么', '为什么'}
+
+        # 分词（简单按字符处理）
+        words = []
+        current_word = ""
+        for char in text:
+            if '\u4e00' <= char <= '\u9fff':  # 汉字
+                if current_word:
+                    words.append(current_word)
+                    current_word = ""
+                words.append(char)
+            elif char.isalnum():
+                current_word += char
+            else:
+                if current_word:
+                    words.append(current_word)
+                    current_word = ""
+
+        if current_word:
+            words.append(current_word)
+
+        # 过滤停用词和短词
+        keywords = [w for w in words if w not in stop_words and len(w) >= 2]
+
+        # 去重并限制数量
+        unique_keywords = list(dict.fromkeys(keywords))[:5]
+
+        return unique_keywords
+
+    # =========================================================================
+    # Node 5: Generate (The Soul)
     # =========================================================================
 
     async def node_generate(self, state: GraphState) -> GraphState:
@@ -1645,13 +1930,34 @@ class MemOSGraph:
         # 调试：显示接收到的检索结果
         print(f"[SYS_PROMPT] Received {len(retrieved)} entities")
         for e in retrieved[:3]:
-            has_fact = "✓" if e.get('matched_fact') else "✗"
-            print(f"  - {e.get('path')} {has_fact}: {e.get('matched_fact','')[:50]}")
+            has_desc = "✓desc" if e.get('description_md') else ""
+            has_facts = "✓facts" if e.get('key_facts') else ""
+            has_fact = "✓match" if e.get('matched_fact') else ""
+            print(f"  - {e.get('path')} {has_desc}{has_facts}{has_fact}")
 
         if needs_retrieval and retrieved:
             for e in retrieved[:3]:  # 只取前3个最相关的
-                matched_fact = e.get("matched_fact", "")
                 entity_name = e.get("name", "")
+                entity_path = e.get("path", "")
+
+                # 【新格式】实体级检索结果：使用 description_md 和 key_facts
+                description_md = e.get("description_md", "")
+                key_facts = e.get("key_facts", [])
+
+                if description_md or key_facts:
+                    # 添加实体档案描述
+                    if description_md:
+                        retrieved_facts.append(f"【{entity_name}的完整档案】\n{description_md}")
+                        print(f"[SYS_PROMPT] Added description_md for {entity_path}")
+
+                    # 添加关键事实
+                    if key_facts:
+                        for fact in key_facts[:3]:  # 只取前3个关键事实
+                            retrieved_facts.append(f"- {entity_name}: {fact}")
+                    continue
+
+                # 【旧格式】兼容：使用 matched_fact
+                matched_fact = e.get("matched_fact", "")
                 if matched_fact:
                     # 支持分号分隔的多个事实
                     facts_list = [f.strip() for f in matched_fact.split(';') if f.strip()]
@@ -1664,7 +1970,21 @@ class MemOSGraph:
                         retrieved_facts.append(clean_fact)
                         print(f"[SYS_PROMPT] Added fact: {clean_fact[:50]}")
 
-        retrieved_text = "\n".join([f"- {f}" for f in retrieved_facts]) if retrieved_facts else ""
+        # 格式化检索到的事实/档案
+        retrieved_text_parts = []
+        for f in retrieved_facts:
+            if f.startswith('【') and '完整档案】' in f:
+                # 多行档案格式：保留原格式但确保缩进
+                lines = f.split('\n')
+                formatted_lines = [lines[0]]  # 标题行
+                for line in lines[1:]:
+                    if line.strip():
+                        formatted_lines.append(f"  {line}")  # 内容行缩进
+                retrieved_text_parts.append('\n'.join(formatted_lines))
+            else:
+                retrieved_text_parts.append(f"- {f}")
+
+        retrieved_text = "\n".join(retrieved_text_parts) if retrieved_text_parts else ""
         if retrieved_text:
             retrieved_text = f"## 检索到的相关事实\n{retrieved_text}\n"
 
