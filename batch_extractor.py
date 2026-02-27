@@ -21,12 +21,39 @@ load_dotenv()
 class BatchExtractor:
     """批处理提取器 - Clawdbot 风格"""
 
+    # 无效人名列表 - 关系代称和通用角色不应创建为 person 实体
+    INVALID_PERSON_NAMES = {
+        "用户", "用户父亲", "用户母亲", "我父亲", "我母亲",
+        "父亲", "母亲", "爸爸", "妈妈", "助手", "系统",
+        "管理员", "客服", "老板", "同事", "朋友", "家人",
+        "AI助手", "ai助手", "机器人"
+    }
+
     def __init__(self):
         self.supabase: Client = create_client(
             os.getenv("SUPABASE_URL"),
             os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         )
         self.llm = get_system_llm()
+
+    def _is_valid_person_name(self, name: str, entity_type: str) -> bool:
+        """校验人名是否合法 - 过滤关系代称和通用角色"""
+        if entity_type != "person":
+            return True
+
+        # 排除明确禁止的词
+        if name in self.INVALID_PERSON_NAMES:
+            print(f"[过滤] '{name}' 是通用词/关系词，不创建 person 实体")
+            return False
+
+        # 排除包含特定词且长度较短的（更可能是代称而非正式人名）
+        invalid_keywords = ["父亲", "母亲", "爸爸", "妈妈", "助手", "用户"]
+        for kw in invalid_keywords:
+            if kw in name and len(name) <= 4:
+                print(f"[过滤] '{name}' 包含关系代称，不创建 person 实体")
+                return False
+
+        return True
 
     def fetch_unprocessed_messages(self, batch_size: int = 100) -> List[Dict]:
         """读取未处理的 L0 消息"""
@@ -126,6 +153,19 @@ class BatchExtractor:
 - 概念知识: /concepts/{{概念名}} (entity_type: concept)
 - 工具/应用: /tools/{{工具名}} (entity_type: folder)
 - 生活: /life/{{类别}}/{{项目}} (entity_type: folder)
+
+## 人物实体提取规则（重要！）
+**仅当满足以下条件时才提取为 person 类型：**
+1. 对话中明确提到了**具体的、完整的人名**（如：李佳泽、王小明、Peter、Mary）
+2. **不要**提取关系代称（如：我父亲、用户父亲、他妈妈、老板、同事）
+3. **不要**提取通用角色（如：用户、助手、管理员、客服、系统）
+
+**处理示例：**
+- "我和李佳泽吃饭" → 提取 person: name="李佳泽", path="/people/li-jia-ze"
+- "我和父亲吃饭" → 不提取 person（无具体姓名）
+- "用户的父亲" → 不提取 person（关系代称）
+- "用户说..." → 不提取 person（通用词）
+- "AI助手回复..." → 不提取 person（角色名）
 
 ## 提取原则
 1. 实体路径使用小写，连字符分隔
@@ -291,10 +331,17 @@ class BatchExtractor:
         path_to_id = {}
         for entity in entities:
             path = entity["path"]
+            name = entity["name"]
+            entity_type = entity.get("entity_type", "folder")
+
+            # 校验人名合法性 - 过滤关系代称和通用角色
+            if not self._is_valid_person_name(name, entity_type):
+                continue  # 跳过非法人名实体
+
             entity_id = self.get_or_create_entity(
                 path=path,
-                name=entity["name"],
-                entity_type=entity.get("entity_type", "folder")
+                name=name,
+                entity_type=entity_type
             )
             path_to_id[path] = entity_id
             print(f"  实体: {path}")
