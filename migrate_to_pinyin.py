@@ -23,6 +23,68 @@ supabase = create_client(
     os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 )
 
+# 无效人名列表 - 这些不应进行拼音化迁移
+INVALID_PERSON_NAMES = {
+    "用户", "用户父亲", "用户母亲", "我父亲", "我母亲",
+    "父亲", "母亲", "爸爸", "妈妈", "助手", "系统",
+    "管理员", "客服", "老板", "同事", "朋友", "家人",
+    "AI助手", "ai助手", "机器人"
+}
+
+# 无效 path 前缀 - 关系实体等
+INVALID_PATH_PREFIXES = [
+    "/people/user-", "/people/ai-", "/people/my-"
+]
+
+
+def needs_migration(entity: dict) -> tuple[bool, str]:
+    """
+    判断实体是否需要拼音化迁移
+    返回: (是否需要迁移, 目标path或None)
+    """
+    name = entity.get("name", "")
+    current_path = entity.get("path", "")
+    entity_type = entity.get("entity_type", "")
+
+    # 1. 必须是人物类型
+    if entity_type != "person":
+        return False, None
+
+    # 2. name 必须是中文（排除 sam-altman 等外文实体）
+    if not is_chinese(name):
+        return False, None
+
+    # 3. 排除通用词/关系词
+    if name in INVALID_PERSON_NAMES:
+        print(f"  跳过（通用词）: {current_path} ({name})")
+        return False, None
+
+    # 4. 排除特定 path 前缀（关系实体）
+    for prefix in INVALID_PATH_PREFIXES:
+        if current_path.startswith(prefix):
+            print(f"  跳过（关系实体）: {current_path}")
+            return False, None
+
+    # 5. 排除包含关系代称关键词且较短的名字
+    invalid_keywords = ["父亲", "母亲", "爸爸", "妈妈", "助手", "用户"]
+    for kw in invalid_keywords:
+        if kw in name and len(name) <= 4:
+            print(f"  跳过（关系代称）: {current_path} ({name})")
+            return False, None
+
+    # 6. 生成期望的标准 path
+    try:
+        expected_path = generate_entity_path(name)
+    except Exception as e:
+        print(f"  跳过（生成path失败）: {name} - {e}")
+        return False, None
+
+    # 7. 如果当前 path 已经是标准格式，跳过
+    if current_path == expected_path:
+        return False, None
+
+    return True, expected_path
+
 
 def get_active_facts_count(entity_id: str) -> int:
     """获取实体的 active facts 数量"""
@@ -57,21 +119,14 @@ def migrate_entities():
         name = person["name"]
         entity_id = person["id"]
 
-        # 跳过已经是拼音格式的
-        path_without_prefix = old_path.replace("/people/", "") if "/people/" in old_path else old_path
-        if not is_chinese(path_without_prefix) and "-" in path_without_prefix:
-            # 可能是 li-jia-ze 格式，检查是否已经是标准格式
-            expected_path = generate_entity_path(name)
-            if old_path == expected_path:
-                print(f"  跳过（已是标准格式）: {old_path}")
-                continue
+        # 使用统一的筛选逻辑判断是否需要迁移
+        need_migrate, new_path = needs_migration(person)
 
-        # 生成新的拼音 path
-        try:
-            new_path = generate_entity_path(name)
-        except Exception as e:
-            print(f"  错误: 无法转换 {name} - {e}")
+        if not need_migrate:
+            # needs_migration 内部已打印跳过原因
             continue
+
+        # 此时 new_path 就是期望的标准拼音 path
 
         # 检查新 path 是否已存在
         existing = supabase.table("mem_l3_entities") \
