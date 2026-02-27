@@ -114,18 +114,26 @@ class BatchExtractor:
     ]
 }}
 
-## 路径命名规范
+## 路径命名规范（重要！）
 - 工作项目: /work/projects/{{项目名称}} (entity_type: project)
-- 个人: /people/{{姓名}} (entity_type: person)
+- 个人: /people/{{拼音姓名}} (entity_type: person)
+  **关键规则**：
+  - 中文姓名必须转换为拼音，每个字分开用连字符
+  - "李佳泽" → path: "/people/li-jia-ze", name: "李佳泽"
+  - "李国栋" → path: "/people/li-guo-dong", name: "李国栋"
+  - "杨桂花" → path: "/people/yang-gui-hua", name: "杨桂花"
+  - 外文姓名保持原样："Peter" → path: "/people/peter"
 - 概念知识: /concepts/{{概念名}} (entity_type: concept)
 - 工具/应用: /tools/{{工具名}} (entity_type: folder)
 - 生活: /life/{{类别}}/{{项目}} (entity_type: folder)
 
 ## 提取原则
 1. 实体路径使用小写，连字符分隔
-2. 事实必须是离散的、原子化的陈述
-3. 每个事实关联一个已定义的实体路径
-4. 置信度 0-1，基于信息明确程度
+2. 人物实体路径必须使用拼音格式（重要！）
+3. 实体名称(name字段)保持原始中文/外文
+4. 事实必须是离散的、原子化的陈述
+5. 每个事实关联一个已定义的实体路径
+6. 置信度 0-1，基于信息明确程度
 
 ## 对话内容
 {conversation}
@@ -157,19 +165,61 @@ class BatchExtractor:
             return [], []
 
     def get_or_create_entity(self, path: str, name: str, entity_type: str = "folder") -> str:
-        """获取或创建实体，返回 entity_id"""
-        # 查询是否已存在
+        """获取或创建实体，返回 entity_id
+
+        支持模糊匹配：
+        1. 精确匹配 path
+        2. 按 name 匹配（适用于拼音标准化前创建的实体）
+        3. 拼音相似度匹配（检测重复实体）
+        """
+        from pinyin_utils import generate_entity_path, chinese_to_pinyin, is_chinese
+
+        # 标准化 path（如果是人物实体）
+        if entity_type == "person" and is_chinese(name):
+            standard_path = generate_entity_path(name)
+        else:
+            standard_path = path
+
+        # 1. 精确匹配标准化 path
         existing = self.supabase.table("mem_l3_entities") \
             .select("id") \
-            .eq("path", path) \
+            .eq("path", standard_path) \
             .execute()
 
         if existing.data:
             return existing.data[0]["id"]
 
-        # 创建新实体
+        # 2. 模糊匹配：检查 name 相同且类型相同
+        name_match = self.supabase.table("mem_l3_entities") \
+            .select("id, path, name") \
+            .eq("name", name) \
+            .eq("entity_type", entity_type) \
+            .execute()
+
+        if name_match.data:
+            # 找到了相同 name 的实体，复用
+            print(f"[EntityMatch] 通过 name 匹配到现有实体: {name} -> {name_match.data[0]['path']}")
+            return name_match.data[0]["id"]
+
+        # 3. 模糊匹配：拼音相似度（仅人物实体）
+        if entity_type == "person" and is_chinese(name):
+            name_pinyin = chinese_to_pinyin(name)
+            # 查询所有同类型人物实体
+            all_entities = self.supabase.table("mem_l3_entities") \
+                .select("id, path, name") \
+                .eq("entity_type", "person") \
+                .execute()
+
+            for e in all_entities.data:
+                if is_chinese(e["name"]):
+                    e_pinyin = chinese_to_pinyin(e["name"])
+                    if name_pinyin == e_pinyin:
+                        print(f"[EntityMatch] 通过拼音匹配到现有实体: {name}({name_pinyin}) -> {e['name']}({e['path']})")
+                        return e["id"]
+
+        # 创建新实体（使用标准化 path）
         new_entity = {
-            "path": path,
+            "path": standard_path,
             "name": name,
             "description_md": f"# {name}\n\n待编译...\n",
             "entity_type": entity_type,

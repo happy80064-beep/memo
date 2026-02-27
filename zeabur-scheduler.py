@@ -147,6 +147,29 @@ def run_profile():
         return False
 
 
+def run_entity_dedup():
+    """运行实体去重"""
+    log("[DEDUP] Starting entity_dedup_scheduler...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "entity_dedup_scheduler.py"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            encoding='utf-8',
+            errors='ignore'
+        )
+        if result.returncode == 0:
+            log("[DEDUP] Completed successfully")
+            return True
+        else:
+            log(f"[DEDUP] Error: {result.stderr[:200]}")
+            return False
+    except Exception as e:
+        log(f"[DEDUP] Exception: {e}")
+        return False
+
+
 def main():
     """主调度循环"""
     log("=" * 60)
@@ -164,6 +187,7 @@ def main():
     log("  - L1 Snapshot: Every day at 01:00")
     log("  - L2 Profile: Every Sunday at 03:00")
     log("  - Lifecycle: Every day at 02:00")
+    log("  - Entity Dedup: Every day at 02:30")
     log("=" * 60)
 
     # 配置（秒）
@@ -182,6 +206,7 @@ def main():
     last_lifecycle_date = datetime.now().strftime('%Y-%m-%d')
     last_snapshot_date = datetime.now().strftime('%Y-%m-%d')
     last_profile_week = datetime.now().isocalendar()[1]  # 当前周数
+    last_dedup_date = datetime.now().strftime('%Y-%m-%d')
 
     log("Entering main loop...")
 
@@ -216,6 +241,11 @@ def main():
         if current_date != last_lifecycle_date and current_hour == 2:
             run_lifecycle()
             last_lifecycle_date = current_date
+
+        # 检查实体去重（每天2:30运行）
+        if current_date != last_dedup_date and current_hour == 2 and current_datetime.minute >= 30:
+            run_entity_dedup()
+            last_dedup_date = current_date
 
         # 显示下次运行倒计时
         next_extractor = EXTRACTOR_INTERVAL - (now - last_extractor)
