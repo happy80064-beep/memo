@@ -21,4 +21,5 @@ PyPDF2>=3.0.0
 python-docx>=1.1.0
 
 # Pinyin Conversion
+# Trigger rebuild to ensure pypinyin is installed
 pypinyin>=0.50.0
