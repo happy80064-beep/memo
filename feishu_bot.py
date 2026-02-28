@@ -125,7 +125,10 @@ class FeishuMessage:
 
 
 async def send_feishu_message(chat_id: str, content: str, msg_type: str = "text"):
-    """发送消息到飞书"""
+    """发送消息到飞书
+
+    支持群聊(oc_开头)和单聊(ou_开头)自动识别
+    """
     token = await FeishuAuth.get_tenant_access_token()
 
     url = f"{FEISHU_BASE_URL}/im/v1/messages"
@@ -139,7 +142,13 @@ async def send_feishu_message(chat_id: str, content: str, msg_type: str = "text"
     else:
         content_json = content
 
-    params = {"receive_id_type": "chat_id"}
+    # 自动识别 ID 类型：oc_开头是群聊，ou_开头是单聊
+    if chat_id.startswith("ou_"):
+        id_type = "open_id"  # 单聊
+    else:
+        id_type = "chat_id"  # 群聊（oc_开头或其他）
+
+    params = {"receive_id_type": id_type}
     payload = {
         "receive_id": chat_id,
         "msg_type": msg_type,
