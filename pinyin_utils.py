@@ -3,7 +3,18 @@
 拼音工具模块
 统一处理中文转拼音和实体命名标准化
 """
-from pypinyin import pinyin, Style
+import sys
+import subprocess
+
+# 自动安装 pypinyin（如果缺失）
+try:
+    from pypinyin import pinyin, Style
+except ImportError:
+    print("[pinyin_utils] pypinyin not found, installing...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pypinyin", "-q"])
+    from pypinyin import pinyin, Style
+    print("[pinyin_utils] pypinyin installed successfully")
+
 import re
 
 # 多音字例外表（常见姓名多音字）
